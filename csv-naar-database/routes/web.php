@@ -1,6 +1,7 @@
 <?php
 
-use App\Http\Controllers\importController;
+
+use App\Http\Controllers\ImportController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -15,3 +16,5 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::view('import','import');
+Route::view('export','export');
+Route::post('import',[ImportController::class,'index']);
