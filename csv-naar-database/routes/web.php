@@ -1,7 +1,6 @@
 <?php
 
-
-use App\Http\Controllers\ImportController;
+use App\Http\Controllers\CSVController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -16,5 +15,5 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::view('import','import');
-Route::view('export','export');
-Route::post('import',[ImportController::class,'index']);
+Route::any('/export',[CSVController::class,'getCSV']);
+// Route::post('/postCSV',[CSVController::class,'postCSV']);
