@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\CSVController;
+use App\Http\Controllers\csvController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,7 +13,6 @@ use Illuminate\Support\Facades\Route;
 | be assigned to the "web" middleware group. Make something great!
 |
 */
-
 Route::view('import','import');
-Route::any('/export',[CSVController::class,'getCSV']);
-// Route::post('/postCSV',[CSVController::class,'postCSV']);
+Route::post('export',[csvController::class,'sendCSV']);
+Route::post('add',[csvController::class,'addData']);
