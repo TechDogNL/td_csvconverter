@@ -1,7 +1,12 @@
-import React, { useMemo,useCallback } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
+import Papa from 'papaparse';
+import { merge, result } from 'lodash';
+import axios from 'axios';
 
-// Definieer je stijlen
+
+
+
 const baseStyle = {
   flex: 1,
   display: 'flex',
@@ -16,7 +21,7 @@ const baseStyle = {
   color: '#bdbdbd',
   outline: 'none',
   transition: 'border .24s ease-in-out',
-  cursor: 'pointer', // Voeg cursor pointer toe voor betere UX
+  cursor: 'pointer', 
 };
 
 const focusedStyle = {
@@ -31,7 +36,9 @@ const rejectStyle = {
   borderColor: '#ff1744'
 };
 
-export default function Importcsv() {
+function Importcsv() {
+    const [uploadedFiles, setUploadedFiles] = useState([]);
+    const [csvData, setcsvData] = useState([]);
   const {
     acceptedFiles,
     fileRejections,
@@ -39,12 +46,16 @@ export default function Importcsv() {
     getInputProps,
     isFocused,
     isDragAccept,
-    isDragReject
+    isDragReject,
   } = useDropzone({
     maxFiles: 6, 
     accept: {'text/csv': []} 
   });
 
+  useMemo(() =>{
+    setUploadedFiles(acceptedFiles);
+  },[acceptedFiles]);
+  
   const style = useMemo(() => ({
     ...baseStyle,
     ...(isFocused ? focusedStyle : {}),
@@ -71,7 +82,24 @@ export default function Importcsv() {
     </li>
   ));
 
-    
+   const handleParseCSV = (e) => {
+  e.preventDefault();
+    uploadedFiles.forEach(file => {
+      Papa.parse(file, {
+        complete: function(results) {
+          console.log('Parsed CSV data:', results.data);
+          setcsvData(prevResult => [...prevResult, results.data]); 
+      //  const merged =  merge(results); //dit nog fixen ik moet 2 values meegeven
+          // console.log('merged data',merged);
+          // window.location.href = 'export';
+        }
+        //de waardes naar een controler sturen en daar weer uit halen om een table te gaan maken
+        //nog checken dat het een header heeft
+      });
+    });
+  };
+
+  console.log('csvdata',csvData);
   return (
     <div>
     <section className="container">
@@ -88,9 +116,10 @@ export default function Importcsv() {
         <ul>{fileRejectionItems}</ul>
       </aside>
     </section>
-    <form>
-    <button >Klik hier om te uploaden</button>
-    </form>
+    <button onClick={handleParseCSV}>Klik hier om te uploaden</button>
+    
     </div>
     );
 }
+
+export default Importcsv

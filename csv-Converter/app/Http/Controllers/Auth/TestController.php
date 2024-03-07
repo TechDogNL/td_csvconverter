@@ -9,8 +9,5 @@ use Inertia\Response;
 
 class TestController extends Controller
 {
-    public function create(): Response
-    {
-        return Inertia::render('Auth/Importcsv');
-    }
+
 }
