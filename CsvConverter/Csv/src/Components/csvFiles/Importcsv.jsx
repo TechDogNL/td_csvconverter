@@ -56,11 +56,14 @@ function Importcsv() {
 
   useEffect(() => {
     if (csvData.length > 0) {
-      axios.post('http://localhost:5174/api/sendcsv', { csvData }) //de url nog veranderen
+    axios.post('http://127.0.0.1:8000/api/sendcsv',{csvData })
+    // axios.post('http://127.0.0.1:8000/api/session',{csvData })
+    // axios.post('http://localhost:5173//api/session',{csvData })
+
         .then(response => {
-          console.log(response.data);
-          // navigate('export');
-          // window.location.href ='export';
+          console.log('response data',response.data);
+        
+        //   navigate('/export');
         })
         .catch(error => {
           console.error('error sending data', error);
@@ -100,15 +103,14 @@ function Importcsv() {
 
    const handleParseCSV = (e) => {
   // e.preventDefault();
-    uploadedFiles.forEach(file => { //moet nog delimiter
+    uploadedFiles.forEach(file => { 
       Papa.parse(file, {
         delimiter:";",
         complete: function(results) {
           
           console.log('Parsed CSV data:', results.data);
           setcsvData(prevResult => [...prevResult, results.data]); 
-          // navigate('export'); //het plakt erbij moet eraf knippen
-                    // window.location.href ='export';
+        //   navigate('export'); //het plakt erbij moet eraf knippen
           console.log('csvData',csvData);
         }
         //de waardes naar een controler sturen en daar weer uit halen om een table te gaan maken
