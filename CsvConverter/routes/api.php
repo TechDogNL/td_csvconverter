@@ -19,5 +19,3 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 Route::post('/sendcsv',[CsvController::class,'sendcsv']);
 Route::get('/getcsv',[CsvController::class,'getcsv']);
-
-Route::post('/session',[CsvController::class,'storeSession']);

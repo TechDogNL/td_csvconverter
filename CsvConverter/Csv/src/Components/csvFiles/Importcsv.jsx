@@ -5,7 +5,7 @@ import { merge, result } from 'lodash';
 import axios from 'axios';
 import { DefaultDelimiter } from 'react-papaparse';
 import { useNavigate } from 'react-router-dom';
-
+import converter from '../API/CsvConverter';
 
 const baseStyle = {
   flex: 1,
@@ -40,6 +40,7 @@ function Importcsv() {
     const [uploadedFiles, setUploadedFiles] = useState([]);
     const [csvData, setcsvData] = useState([]);
     const navigate = useNavigate();
+    const [submitting, setSubmitting] = useState(false);
 
   const {
     acceptedFiles,
@@ -54,22 +55,16 @@ function Importcsv() {
     accept: {'text/csv': []}  
   });
 
-  useEffect(() => {
-    if (csvData.length > 0) {
-    axios.post('http://127.0.0.1:8000/api/sendcsv',{csvData })
-    // axios.post('http://127.0.0.1:8000/api/session',{csvData })
-    // axios.post('http://localhost:5173//api/session',{csvData })
-
-        .then(response => {
-          console.log('response data',response.data);
-        
-        //   navigate('/export');
-        })
-        .catch(error => {
-          console.error('error sending data', error);
-        });
-    }
-  }, [csvData]);
+const SendAll = async () => {
+  
+      try {
+        const response = await converter.post('sendcsv',csvData);
+        console.log(response.data);
+      } catch (error) {
+        console.warn(error);
+      }
+  
+}
 
   useMemo(() =>{
     setUploadedFiles(acceptedFiles);
@@ -101,8 +96,8 @@ function Importcsv() {
     </li>
   ));
 
-   const handleParseCSV = (e) => {
-  // e.preventDefault();
+   const handleParseCSV = () => {
+    setSubmitting(true);
     uploadedFiles.forEach(file => { 
       Papa.parse(file, {
         delimiter:";",
@@ -110,8 +105,8 @@ function Importcsv() {
           
           console.log('Parsed CSV data:', results.data);
           setcsvData(prevResult => [...prevResult, results.data]); 
-        //   navigate('export'); //het plakt erbij moet eraf knippen
-          console.log('csvData',csvData);
+        //   navigate('export'); //
+          SendAll();
         }
         //de waardes naar een controler sturen en daar weer uit halen om een table te gaan maken
         //nog checken dat het een header heeft
@@ -138,7 +133,7 @@ function Importcsv() {
         <ul>{fileRejectionItems}</ul>
       </aside>
     </section>
-    <button onClick={handleParseCSV}>Klik hier om te uploaden</button>
+    <button onClick={handleParseCSV} >Klik hier om te uploaden</button>
     </div>
     );
 }

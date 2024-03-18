@@ -2,6 +2,9 @@ import axios from "axios";
 import React, { useEffect, useState } from "react";
 
 function Exportcsv() {
+    const [optionDisabled, setOptionDisabled] = useState(false);
+    const [handleSelectChange,setHandleSelectChange] = useState("");
+    const [selectedOption, setSelectedOption] = useState("");
     const [disabledTds, setDisabledTds] = useState([]);
     const [currentDataIndex, setCurrentDataIndex] = useState(0);
     const [getData, setGetData] = useState([]);
@@ -12,59 +15,102 @@ function Exportcsv() {
         ['voertuig','auto','bus','fiets','trein','vliegtuig'],
         ['dier','hond','kat','konijn','paard','vogel'],
     ];
+    const testArray = [
+        ['weer','een','kleine','test'],
+        ['6','7','8','9'],
+        ['watermeloen','grapefruit'],
+        ['boot','brommer'],
+        ['leeuw','giraf'],
+        
+    ];
 
     const count = dataArray.length;
-//     useEffect(() =>{
-//         axios.get('http://127.0.0.1:8000/api/getcsv')
-//         .then(response => {
-//             setGetData(response.data.getData);
-//             console.log('getdata',getData);
-//         })
-//         .catch(error => {
-//             console.error('Error fetching CSV data', error);
-//         });
-// }, []);
+    useEffect(() =>{
+        const initialDisabledTds = Array.from({ length: dataArray[currentDataIndex].length }, (_, index) => index);
+        setDisabledTds(initialDisabledTds);
+        // axios.get('https://csv-converter.techdogcloud.com/api/getcsv')
+        // .then(response => {
+        //     setGetData(response.data.getData);
+        //     console.log('getdata',getData);
+        // })
+        // .catch(error => {
+        //     console.error('Error fetching CSV data', error);
+        // });
+}, [currentDataIndex]);
 //eerst wel alle array van elkaar weer splitten
+
+
+//dit zijn voor de 2 buttons onderaan
 const toggleData = (direction) => {
     if (direction === 'next') {
         if (currentDataIndex === count - 1) {  
         }
         setCurrentDataIndex(prevIndex => prevIndex + 1);
+        document.getElementById("selected").checked = false;
+        setSelectedOption("")
+        setOptionDisabled(false);
     } else if (direction === 'prev') {
         if (currentDataIndex === 0) {
         }
         setCurrentDataIndex(prevIndex => prevIndex - 1);
+        document.getElementById("selected").checked = false;
+        setSelectedOption("")
+        setOptionDisabled(false);
     }
 };
 function check(index)
     {
+ //voor selecteren welke regel
+   if (selectedOption) {
   const newDisabledTds = [];
   for (let i = 0; i < index; i++) {
       newDisabledTds.push(i);
   }
   setDisabledTds(newDisabledTds);
+   }
+}
+const handleSelectChangeHandler = (event) => {
+    const value = event.target.value;
+    setSelectedOption(value);
+    setDisabledTds([]);//hierdoor worden alle items weer enabled
+    document.getElementById("selected").checked = false;
 
-        // if (!disabledTds.includes(index)) {
-        //     setDisabledTds([index -1]);
-    
-    }
-
+    setOptionDisabled(true);
+    // if (value === "1") {
+    //     setOptionDisabled(prevState => ({
+    //         ...prevState,
+    //         "1": true         
+    //     }));
+    // } else {
+    //     setOptionDisabled(prevState => ({
+    //         ...prevState,
+    //         "1": false
+    //     }));
+    // }
+}
     return (
         <div> 
-            <table>
+            <select value={selectedOption} onChange={handleSelectChangeHandler}>
+                <option value="" disabled  hidden >Kies je optie</option>
+                <option value="1" disabled={optionDisabled}>Productnaam</option>
+                <option value="2">Productnummer</option>
+            </select>
+            <table style={{  border: '1px solid black' }}>
                 <thead>
                     <tr>
-                        <th>eerste product regel</th>
-                        <th>Column</th>
+                        <th>Eerste product regel</th>
+                        <th>Kolom</th>
+                        <th>kolom2</th>
                     </tr>
                 </thead>
                 <tbody>
                     {dataArray[currentDataIndex].map((item, index) => (
-                        <tr key={index}>
-                          <td> <input type="radio" name="group" id="selected" onClick={() => check(index)}></input></td>
-                          <td style={{ color: disabledTds.includes(index) ? 'gray' : 'black' }}>{item}</td>
+                        <tr key={index} >
+                          <td style={{  border: '1px solid black' }}> <input type="radio" name="group" id="selected" onClick={() => check(index)}></input></td>
+                          <td style={{border:'1px solid black' ,color: disabledTds.includes(index) ? 'gray' : 'black' }}>{item}</td>
+                          <td style={{ border: '1px solid black', color: disabledTds.includes(index) ? 'gray' : 'black' }}>{testArray[currentDataIndex][index]}</td>
                         </tr>
-                    ))}
+                    ))} 
                 </tbody>
             </table>
             <button onClick={() => toggleData('prev')} disabled={currentDataIndex === 0 }>vorige file</button>
