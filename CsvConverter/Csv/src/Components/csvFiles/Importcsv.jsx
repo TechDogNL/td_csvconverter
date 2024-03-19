@@ -6,6 +6,8 @@ import axios from 'axios';
 import { DefaultDelimiter } from 'react-papaparse';
 import { useNavigate } from 'react-router-dom';
 import converter from '../API/CsvConverter';
+import Exportcsv from './Exportcsv';
+import { Link } from 'react-router-dom';
 
 const baseStyle = {
   flex: 1,
@@ -36,12 +38,15 @@ const rejectStyle = {
   borderColor: '#ff1744'
 };
 
+// const response = await converter.post('sendcsv', {csvData:dataToSend});
 function Importcsv() {
     const [uploadedFiles, setUploadedFiles] = useState([]);
     const [csvData, setcsvData] = useState([]);
     const navigate = useNavigate();
     const [submitting, setSubmitting] = useState(false);
-
+    const [showExport, setShowExport] = useState(false);
+    const [showImport, setShowImport] = useState(false);
+    
   const {
     acceptedFiles,
     fileRejections,
@@ -55,16 +60,20 @@ function Importcsv() {
     accept: {'text/csv': []}  
   });
 
-const SendAll = async () => {
-  
-      try {
-        const response = await converter.post('sendcsv',csvData);
-        console.log(response.data);
-      } catch (error) {
-        console.warn(error);
-      }
-  
-}
+useEffect(() => {
+  console.log("send to export data",csvData);
+  console.log("send to export files",acceptedFiles)
+  if(csvData.length > 0)
+  {
+    setShowExport(true);
+    setShowImport(false);
+  }
+  else{
+    setShowExport(false);
+    setShowImport(true);
+  }
+}, [csvData])
+
 
   useMemo(() =>{
     setUploadedFiles(acceptedFiles);
@@ -96,29 +105,32 @@ const SendAll = async () => {
     </li>
   ));
 
+  const resetAll = () => {
+    setUploadedFiles([]);
+    setcsvData([]);
+  }
+
    const handleParseCSV = () => {
     setSubmitting(true);
-    uploadedFiles.forEach(file => { 
+     uploadedFiles.forEach(file => { 
       Papa.parse(file, {
         delimiter:";",
-        complete: function(results) {
-          
+        complete: function(results) {         
           console.log('Parsed CSV data:', results.data);
-          setcsvData(prevResult => [...prevResult, results.data]); 
-        //   navigate('export'); //
-          SendAll();
-        }
-        //de waardes naar een controler sturen en daar weer uit halen om een table te gaan maken
-        //nog checken dat het een header heeft
-        //const merged =  merge(results); //dit nog fixen ik moet 2 values meegeven
-        // console.log('merged data',merged);
+          setcsvData(prevResult => [...prevResult, results.data]);    
+        } 
       });
     });
   };
-
+   //   navigate('export'); //
+    //de waardes naar een controler sturen en daar weer uit halen om een table te gaan maken
+        //nog checken dat het een header heeft
+        //const merged =  merge(results); //dit nog fixen ik moet 2 values meegeven
+        // console.log('merged data',merged);
   
   return (
     <div>
+  {showImport && ( 
     <section className="container">
       <h1>Upload je CSV bestand</h1>
       <div {...getRootProps({style})}>
@@ -133,9 +145,24 @@ const SendAll = async () => {
         <ul>{fileRejectionItems}</ul>
       </aside>
     </section>
+  )}
+     {showImport && (
     <button onClick={handleParseCSV} >Klik hier om te uploaden</button>
+     )}
+        {/* {showExport && <Exportcsv test={csvData} />} */}
+        {showExport &&(
+          <div>
+            test
+          <button onClick={resetAll}>click</button>
+          </div>
+          
+        )}
+      
     </div>
-    );
+  );
 }
-
+{{ /* button onclick()
+const [uploadedFiles, setUploadedFiles] = useState([]);
+const [csvData, setcsvData] = useState([]);
+leeg maken */ }}
 export default Importcsv
