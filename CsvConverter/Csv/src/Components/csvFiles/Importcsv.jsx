@@ -1,13 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
-import { merge, result } from 'lodash';
 import axios from 'axios';
-import { DefaultDelimiter } from 'react-papaparse';
-import { useNavigate } from 'react-router-dom';
-import converter from '../API/CsvConverter';
-import Exportcsv from './Exportcsv';
-import { Link } from 'react-router-dom';
+
 
 const baseStyle = {
   flex: 1,
@@ -42,7 +37,6 @@ const rejectStyle = {
 function Importcsv() {
     const [uploadedFiles, setUploadedFiles] = useState([]);
     const [csvData, setcsvData] = useState([]);
-    const navigate = useNavigate();
     const [submitting, setSubmitting] = useState(false);
     const [showExport, setShowExport] = useState(false);
     const [showImport, setShowImport] = useState(false);
@@ -115,6 +109,8 @@ useEffect(() => {
      uploadedFiles.forEach(file => { 
       Papa.parse(file, {
         delimiter:";",
+        skipEmptyLines,
+        header,
         complete: function(results) {         
           console.log('Parsed CSV data:', results.data);
           setcsvData(prevResult => [...prevResult, results.data]);    
@@ -122,6 +118,7 @@ useEffect(() => {
       });
     });
   };
+
    //   navigate('export'); //
     //de waardes naar een controler sturen en daar weer uit halen om een table te gaan maken
         //nog checken dat het een header heeft
@@ -133,14 +130,14 @@ useEffect(() => {
   {showImport && ( 
     <section className="container">
       <h1>Upload je CSV bestand</h1>
-      <div {...getRootProps({style})}>
+      <div {...getRootProps({style})}>  { /* hier zijn de dropzones handles */ }
         <input {...getInputProps()} />
         <p>Klik hier om 1 of meer bestanden te selecteren</p>
         <em>(Je kunt maximaal 6 bestanden hier neerzetten)</em>
       </div>
       <aside>
         <h4>Geaccepteerde bestanden</h4>
-        <ul>{acceptedFileItems}</ul>
+        <ul>{acceptedFileItems}</ul> 
         <h4>Afgewezen bestanden</h4>
         <ul>{fileRejectionItems}</ul>
       </aside>
