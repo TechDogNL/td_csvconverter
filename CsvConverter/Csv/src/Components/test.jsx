@@ -1,9 +1,12 @@
-import React, {useEffect, useMemo, useState} from "react";
+import React, {useEffect, useMemo, useState, } from "react";
 import Papa from "papaparse";
 import { useDropzone } from 'react-dropzone';
-import { Table, TableHead, TableBody, TableRow, TableCell, Paper, TableContainer } from "@mui/material";
+import { Table, TableHead, TableBody, TableRow, TableCell, Paper, TableContainer, colors, Autocomplete} from "@mui/material";
 import { DataGrid} from "@mui/x-data-grid";
 import _, { compact } from 'lodash';
+import converter from "./API/CsvConverter";
+import TextField from '@mui/material/TextField';
+
 
 function Test (){
 
@@ -40,9 +43,17 @@ const [showTabel,setShowTabel] = useState(false);
 const [showdrop,setShowDrop] = useState(true);
 const [importData, setImportData] = useState([]);
 const [uploadedFiles, setUploadedFiles] = useState([]);
-const [csvData, setcsvData] = useState([]);
+
 const [rows,setRows] = useState([]);
-const [header,setHeaders] = useState([]);
+const [mainArray,setMainArray] = useState([]);
+const [index, setIndex] = useState(0)
+const [currentArray,setCurrentArray] = useState([]);
+const [disabledRow,setDisabledRow] = useState([]);
+const [options,setOptions ] = useState(["productnaam","productnummer", "order1", "order2", "order3"]);
+const [selectedRow, setSelectedRow] = useState(null);
+const [disableColumn, setDisableColumn] = useState([]);
+
+const count = mainArray.length
 
 const {
     acceptedFiles,
@@ -56,7 +67,7 @@ const {
     maxFiles: 6, 
     accept: {'text/csv': []}  
 });
-// const  [headers,...rows] = array;
+
 
 const style = useMemo(() => ({
     ...baseStyle,
@@ -73,29 +84,43 @@ useMemo(() =>{
     setUploadedFiles(acceptedFiles);
 },[acceptedFiles]);
 
-
-
-
 useEffect(()=>{
-    if(csvData.length >0)
+    if(mainArray.length > 0)
     {
-        const [csvHeaders, ...csvRows] = csvData;
-        setHeaders(csvHeaders);
-        setRows(csvRows);
-        console.log("csvdata",csvData);
-        console.log("headers",header)
-        console.log("rows",rows)
+        setShowTabel(true);
+        setShowDrop(false);
+        console.log("length",mainArray.length);
+        
     }
     else{
-
+        setShowTabel(false);
+        setShowDrop(true);
     }
-},[csvData])
+    console.log("mainArray",mainArray);
+    console.log("disabledrow",disabledRow);
+    console.log("selectedrow",selectedRow)
+},[mainArray,disabledRow,selectedRow,])
 
-const acceptedFileItems = acceptedFiles.map(file => (
+useEffect(()=>{
+    if(showTabel)
+    {
+        const initialDisabledRow = mainArray && mainArray[index] ?
+                Array.from({ length: mainArray[index].length }, (_, index) => index) : [];
+                setDisabledRow(initialDisabledRow)
+   
+    }
+},[showTabel,index])
+
+
+const acceptedFileItems = uploadedFiles.length > 0 ?(
+ acceptedFiles.map(file => (
     <li key={file.path}>
         {file.path} - {file.size} bytes
     </li>
-));
+ ))
+) : (
+    <li>No files uploaded</li>
+)
 
 const fileRejectionItems = fileRejections.map(({ file, errors }) => (
     <li key={file.path}>
@@ -107,30 +132,81 @@ const fileRejectionItems = fileRejections.map(({ file, errors }) => (
 ));
 
 
-function showing () 
+function handleCSV () 
 {
-    setShowTabel(true);
-    setShowDrop(false);
     uploadedFiles.forEach(file => { 
         Papa.parse(file, {
             delimiter:";",
             skipEmptyLines: true,
-            complete: function(results) {         
-                console.log('Parsed CSV data:', results.data);
+            dynamicTyping:true,
+            complete: function(results) {
+                console.log('Parsed CSV data:', results.data);    
+                const convertedData = results.data.map(row =>
+                   compact(row).map(cell => {
+                        if (typeof cell === 'string' && !isNaN(parseFloat(cell))) {
+                            return parseFloat(cell.replace(',', '.'));
+                        } else {
+                            return cell;
+                        }
+                    })
+                );
+
+                setMainArray(prevArray =>[...prevArray,convertedData]);
 
                 
-                // setcsvData(prevResult => [...prevResult, results.data]);   
-                setcsvData(results.data.map(row =>compact(row))); //nu kan ik niet meerdere array in csvData stoppen
-            } 
+                console.table(mainArray);
+                setCurrentArray(mainArray[index])
+    
+            }
         });
     });
 
 };
 
-function hiding ()
+
+function reset ()
 {
-    setShowTabel(false);
-    setShowDrop(true);
+    setMainArray([]);
+    setUploadedFiles([]);
+    setCurrentArray([]);
+    setDisabledRow([]);
+    setIndex(0);
+}
+
+function check(index,rowIndex){
+    setSelectedRow(rowIndex);
+
+    const newDisabledRow = [];
+    for(let i = 0; i< rowIndex; i++)
+    {
+        newDisabledRow.push(i)
+    }
+    setDisabledRow(newDisabledRow);
+}
+
+const toggleTable =(direction)=>{
+    if(direction === 'next' && index < count -1)
+        {
+            setIndex(index + 1);
+            setSelectedRow(null);
+        }
+    
+    else if (direction === 'prev' && index > 0)
+        {
+            setIndex(index - 1);   
+            setSelectedRow(null);
+        }
+}
+
+const handleChange = (event,newValue) => {
+    
+    //only enable that column
+};
+
+async function toDatabase (){
+//  const response = await converter.post('sendcsv', {csvData:csvData}); //het verstuurd maar 1 array,miss alles op 1 lijn zetten
+//de column moet we kloppen met elkaar dus barcode bij barcode
+ console.log("response data",response);
 }
 
 return(
@@ -151,7 +227,7 @@ return(
                         <ul>{fileRejectionItems}</ul>
                     </aside>
                 </section>
-                <button onClick={showing}>verder</button>
+                <button onClick={handleCSV}>verder</button>
         </div>
         }
         <div>
@@ -161,45 +237,57 @@ return(
     <TableContainer component={Paper}>
         <Table sx={{ minWidth: 700 }} aria-label="customized table">
             <TableHead>
-                {/* Render table headers */}
+                {/* headers */}
                 <TableRow>
                     <TableCell sx={{ fontWeight:'bold' }} > 
-                        eerste regel 
+                        eerste regel product
                     </TableCell>
-                    {header.map((header, index) => (
+                    {mainArray[index] && mainArray[index][0].map((header, index) => (
                     <TableCell key={index} sx={{ fontWeight:'bold' }} >
-                        {header}
+                        <Autocomplete
+                            id="keuzesInput"
+                            options={options}
+                            onChange={(event,newValue) => handleChange(event,newValue,index)}
+                            // getOptionDisabled={disableOption}
+                            renderInput={(params) => (
+                            <TextField {...params} label="Kolom matchen of overslaan" variant="outlined" style={{ width: 200 }} />
+                            )}
+                            />
                     </TableCell>
                     ))}
                 </TableRow>
             </TableHead>
             <TableBody>
-                {/* Render table rows */}
-                {rows.filter(row => row.length > 0, _.remove(rows, row => row.length === 0))
+                {/* rows */}
+                {mainArray[index] && mainArray[index]
+                .filter(row=>row.length > 0, _.remove(rows, row => row.length === 0))
                 .map((row, rowIndex) => (
-                    <TableRow key={rowIndex}>
-                        <TableCell> 
-                            <input type="radio" name="group" /> 
-                        </TableCell>
-                    {row.map((cell, cellIndex) => (
-                        <TableCell key={cellIndex}>
-                            {cell}
-                        </TableCell>
-                    ))}
-                    </TableRow>
+                        <TableRow key={rowIndex}>
+                            <TableCell> 
+                                <input type="radio" name="group" id="selected" checked={selectedRow === rowIndex} onChange={()=> check(index,rowIndex)} />                    
+                            </TableCell>
+                            {row.map((cell, cellIndex) => (
+                                <TableCell key={cellIndex} style={{color : disabledRow.includes(rowIndex)? 'gray' : 'black'}} > 
+                                    {cell}
+                                </TableCell>
+                            ))}
+                        </TableRow>
                 ))}
             </TableBody>
         </Table>
     </TableContainer>
-    <button onClick={hiding}>terug</button>
-    <button >naar database</button>
+    <button onClick={reset}>terug</button>
+    <button onClick={()=>toggleTable('prev')} disabled={index === 0}>vorige file</button>
+    <button onClick={()=>toggleTable('next')} disabled={index === count -1}>volgende file</button>
+    <button onClick={toDatabase}>naar database</button>
+    
                 </div>
             </div>
             }
         </div>
     </div> 
 
-       
+       //disabledRow niet andersom doen? dus enabledrows met alle data daar in 
 )}
 
 

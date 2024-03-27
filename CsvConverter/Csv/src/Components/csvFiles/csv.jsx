@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
 import axios from 'axios';
+import { compact } from 'lodash';
 
 const baseStyle = {
   flex: 1,
@@ -126,22 +127,9 @@ function Csv() {
             Papa.parse(file, {
                 delimiters: [",",";"],
                 skipEmptyLines: true,
-                transform: (value, header) => {
-                    // Check if the current column is "barcode"
-                    if (header === "barcode") {
-                       // Convert scientific notation to number
-                    if (/^\d+(,\d+)?E[+-]\d+$/.test(value)) {
-                        return parseFloat(value.replace(",", "").replace(/E[+-]/, "e"));
-                    } else {
-                        // If it's not in scientific notation, convert text to number
-                        return parseFloat(value.replace(",", "."));
-                    }
-                }
-                    return value; // Return value as is for other columns
-                },
                 complete: function(results) {         
                     console.log('Parsed CSV data:', results.data);
-                    setcsvData(prevResult => [...prevResult, results.data]);    
+                    setcsvData(prevResult => [...prevResult, results.data.map(row =>compact(row))]);    
                 } 
             });
         });

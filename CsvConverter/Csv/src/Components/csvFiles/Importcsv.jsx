@@ -33,7 +33,6 @@ const rejectStyle = {
   borderColor: '#ff1744'
 };
 
-// const response = await converter.post('sendcsv', {csvData:dataToSend});
 function Importcsv() {
     const [uploadedFiles, setUploadedFiles] = useState([]);
     const [csvData, setcsvData] = useState([]);
