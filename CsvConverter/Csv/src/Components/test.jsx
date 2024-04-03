@@ -1,7 +1,7 @@
 import React, {useEffect, useMemo, useState, } from "react";
 import Papa from "papaparse";
 import { useDropzone } from 'react-dropzone';
-import { Table, TableHead, TableBody, TableRow, TableCell, Paper, TableContainer, colors, Autocomplete} from "@mui/material";
+import { Table, TableHead, TableBody, TableRow, TableCell, Paper, TableContainer, colors, Autocomplete,Button} from "@mui/material";
 import { DataGrid} from "@mui/x-data-grid";
 import _, { compact } from 'lodash';
 import converter from "./API/CsvConverter";
@@ -48,10 +48,18 @@ const [rows,setRows] = useState([]);
 const [mainArray,setMainArray] = useState([]);
 const [index, setIndex] = useState(0)
 const [currentArray,setCurrentArray] = useState([]);
-const [disabledRow,setDisabledRow] = useState([]);
-const [options,setOptions ] = useState(["productnaam","productnummer", "order1", "order2", "order3"]);
+
+const [disableTable,setDisableTable] = useState(false);
+const [disabledRows,setDisabledRows] = useState([]);
+const [enabledRows,setEnabledRows] = useState([]);
 const [selectedRow, setSelectedRow] = useState(null);
-const [disableColumn, setDisableColumn] = useState([]);
+
+const [options,setOptions ] = useState(["productnaam","productnummer", "order1", "order2", "order3","barcode"]);
+const [disabledOptions,setDisabledOptions] = useState([]);
+const [currentOptions, setCurrentOptions] = useState(Array.from({ length: options.length }, () => ''));
+const [inputValues, setInputValues] = useState(options.map(() => ''));
+
+// const [enabledColumn,setEnabledColumn] = useState([]);
 
 const count = mainArray.length
 
@@ -89,28 +97,26 @@ useEffect(()=>{
     {
         setShowTabel(true);
         setShowDrop(false);
-        console.log("length",mainArray.length);
-        
     }
     else{
         setShowTabel(false);
         setShowDrop(true);
     }
-    console.log("mainArray",mainArray);
-    console.log("disabledrow",disabledRow);
-    console.log("selectedrow",selectedRow)
-},[mainArray,disabledRow,selectedRow,])
+    console.log("disabled options", disabledOptions)
+   
+
+},[disabledOptions,mainArray])
 
 useEffect(()=>{
+    settingDisableTable();
+},[showTabel,index,options,])
+
+const settingDisableTable = () => {
     if(showTabel)
     {
-        const initialDisabledRow = mainArray && mainArray[index] ?
-                Array.from({ length: mainArray[index].length }, (_, index) => index) : [];
-                setDisabledRow(initialDisabledRow)
-   
+        setDisableTable(true);
     }
-},[showTabel,index])
-
+}
 
 const acceptedFileItems = uploadedFiles.length > 0 ?(
  acceptedFiles.map(file => (
@@ -150,58 +156,143 @@ function handleCSV ()
                         }
                     })
                 );
-
-                setMainArray(prevArray =>[...prevArray,convertedData]);
-
+                const validRows = convertedData.filter(row => Array.isArray(row) && row.length > 0);
+                setMainArray(prevArray =>[...prevArray,validRows]);
+            
                 
                 console.table(mainArray);
-                setCurrentArray(mainArray[index])
-    
+                // setCurrentArray(mainArray[index])
             }
         });
     });
-
 };
 
 
-function reset ()
+const  reset = (index) =>
 {
     setMainArray([]);
     setUploadedFiles([]);
     setCurrentArray([]);
-    setDisabledRow([]);
+    setDisableTable([]);
+    setDisabledRows([]);
+    setEnabledRows([]);
     setIndex(0);
+    setSelectedRow(null);
+    setDisabledOptions([]);
+    setInputValues('');
 }
 
 function check(index,rowIndex){
+   
     setSelectedRow(rowIndex);
 
-    const newDisabledRow = [];
-    for(let i = 0; i< rowIndex; i++)
-    {
-        newDisabledRow.push(i)
-    }
-    setDisabledRow(newDisabledRow);
+    const newDisabledRows = [];
+    const newEnabledRows = [];
+    for(let i = 0; i <mainArray[index].length; i++)
+        if (i < rowIndex) {
+            newDisabledRows.push(i);
+        } else if (i => rowIndex) {
+            newEnabledRows.push(i);
+        }
+    setDisabledRows(newDisabledRows);
+    setEnabledRows(newEnabledRows);
+
 }
+
 
 const toggleTable =(direction)=>{
     if(direction === 'next' && index < count -1)
         {
             setIndex(index + 1);
             setSelectedRow(null);
+            setDisabledOptions([])
+            //de enabledrows of iets anders in een array zetten en zo houden
+            //eerst in een andere array zetten en dan pas resetten
+
+            setDisabledRows([])
+            setEnabledRows([])
+            setInputValues('');
         }
     
     else if (direction === 'prev' && index > 0)
         {
             setIndex(index - 1);   
             setSelectedRow(null);
+            setDisabledOptions([])
+            setDisabledRows([])
+            setEnabledRows([])
+            setInputValues('');
         }
 }
 
-const handleChange = (event,newValue) => {
-    
-    //only enable that column
+const handleChange = (event,newValue,index) => {
+    const updatedInputValues = [...inputValues];
+    updatedInputValues[index] = newValue || '';
+    setInputValues(updatedInputValues);
+    setDisableTable(false);
+    console.log("current options",currentOptions)
+      if (newValue) {
+        if (currentOptions[index]) {
+            setDisabledOptions(prevOptions => prevOptions.filter(option => option !== currentOptions[index]));
+        }
+        setDisabledOptions(prevOptions => [...prevOptions, newValue]);
+        setCurrentOptions(prevOptions => {
+            const newOptions = [...prevOptions];
+            newOptions[index] = newValue;
+            return newOptions;
+        });
+    }
+ 
+    // if (newValue && !disabledOptions.includes(newValue)) {
+    //     const newdisabledoptions = disabledOptions.filter(option =>option !== '');
+    //     setDisabledOptions(prevOptions =>[...newdisabledoptions,newValue]);
+    //         if(newValue)
+    //         {
+    //             //if the value is in the same textfield make it enabled, but disabled for other textfields
+    //         }
+    // }
 };
+
+const Overslaan = (index) => {
+    const clearedValue = inputValues[index];
+    const updatedInputValues = [...inputValues];
+    updatedInputValues[index] = '';
+    setInputValues(updatedInputValues);
+    
+    setDisabledOptions(prevOptions => prevOptions.filter(opt => opt !== clearedValue));
+    setCurrentOptions(prevOptions => {
+        const newOptions = [...prevOptions];
+        newOptions[index] = '';
+        return newOptions;
+    });
+};
+
+const settingDisabledOptions = (event,index) =>{
+
+
+    // const newValue = inputValues[index];
+    // //zolang je in dezelfde textfield zit dan moet de option blijven
+    // if (newValue && !disabledOptions.includes(newValue)) {
+    //     const newdisabledoptions = disabledOptions.filter(option =>option !== '');
+    //     setDisabledOptions(prevOptions =>[...newdisabledoptions,newValue]);
+    // }
+}
+
+
+const cellStyle = (disableTable,disabledRows,rowIndex) => {
+    if (disableTable){
+        return {
+            color: 'gray',
+            backgroundColor: '#f0f0f0'
+        }
+    } else {
+        return {
+            color: disabledRows.includes(rowIndex) ? 'gray' : 'black',
+            backgroundColor: disabledRows.includes(rowIndex) ? '#f0f0f0' : 'transparent'
+        }
+    }
+}
+
 
 async function toDatabase (){
 //  const response = await converter.post('sendcsv', {csvData:csvData}); //het verstuurd maar 1 array,miss alles op 1 lijn zetten
@@ -242,17 +333,29 @@ return(
                     <TableCell sx={{ fontWeight:'bold' }} > 
                         eerste regel product
                     </TableCell>
-                    {mainArray[index] && mainArray[index][0].map((header, index) => (
+                    {mainArray[index] && mainArray[index][0].map((array, index) => (
                     <TableCell key={index} sx={{ fontWeight:'bold' }} >
+                        <div>
                         <Autocomplete
-                            id="keuzesInput"
+                            id={`keuzesInput_${index}`}
                             options={options}
-                            onChange={(event,newValue) => handleChange(event,newValue,index)}
-                            // getOptionDisabled={disableOption}
+                            value={inputValues[index] || null}
+                            disableClearable
+                            onChange={(event,newValue,) => handleChange(event,newValue,index)}
+                            getOptionDisabled={(option => disabledOptions.includes(option))}
                             renderInput={(params) => (
-                            <TextField {...params} label="Kolom matchen of overslaan" variant="outlined" style={{ width: 200 }} />
-                            )}
+                                <TextField {...params} label="Kolom matchen of overslaan" variant="outlined" style={{ width: 200 }}   
+                                    InputProps={{
+                                    ...params.InputProps,           
+                                    }} 
+                                />
+                                )}
                             />
+                            
+                            <Button variant="text" onClick={()=> Overslaan(index)} style={{  marginLeft: 45 }}> {/* ik wil hier de value meegeven dat in de textfield */}
+                            Overslaan
+                            </Button>                           
+                        </div>
                     </TableCell>
                     ))}
                 </TableRow>
@@ -267,7 +370,7 @@ return(
                                 <input type="radio" name="group" id="selected" checked={selectedRow === rowIndex} onChange={()=> check(index,rowIndex)} />                    
                             </TableCell>
                             {row.map((cell, cellIndex) => (
-                                <TableCell key={cellIndex} style={{color : disabledRow.includes(rowIndex)? 'gray' : 'black'}} > 
+                                <TableCell key={cellIndex} style={cellStyle(disableTable,disabledRows,rowIndex)} > 
                                     {cell}
                                 </TableCell>
                             ))}
@@ -276,6 +379,7 @@ return(
             </TableBody>
         </Table>
     </TableContainer>
+    
     <button onClick={reset}>terug</button>
     <button onClick={()=>toggleTable('prev')} disabled={index === 0}>vorige file</button>
     <button onClick={()=>toggleTable('next')} disabled={index === count -1}>volgende file</button>

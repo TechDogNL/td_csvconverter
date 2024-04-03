@@ -48,7 +48,7 @@ function Csv() {
     const [currentDataIndex, setCurrentDataIndex] = useState(0);
 
     const count = csvData.length;
-
+ 
     const {
         acceptedFiles,
         fileRejections,
