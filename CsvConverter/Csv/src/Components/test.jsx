@@ -3,7 +3,7 @@ import Papa from "papaparse";
 import { useDropzone } from 'react-dropzone';
 import { Table, TableHead, TableBody, TableRow, TableCell, Paper, TableContainer, colors, Autocomplete,Button} from "@mui/material";
 import { DataGrid} from "@mui/x-data-grid";
-import _, { compact } from 'lodash';
+import _, { compact, first, isEmpty } from 'lodash';
 import converter from "./API/CsvConverter";
 import TextField from '@mui/material/TextField';
 
@@ -59,7 +59,11 @@ const [disabledOptions,setDisabledOptions] = useState([]);
 const [currentOptions, setCurrentOptions] = useState(Array.from({ length: options.length }, () => ''));
 const [inputValues, setInputValues] = useState(options.map(() => ''));
 
-// const [enabledColumn,setEnabledColumn] = useState([]);
+const [enabledColumns,setEnabledColumns] =  useState([]);
+const [disabledColumns,setDisabledColumns] = useState([]);
+
+const [processedData, setProcessedData] = useState([]);
+
 
 const count = mainArray.length
 
@@ -92,6 +96,19 @@ useMemo(() =>{
     setUploadedFiles(acceptedFiles);
 },[acceptedFiles]);
 
+useMemo(() => {
+    const newData = [];
+    
+    for (let i = 0; i < enabledColumns.length; i++) {
+        // Slice enabledColumns with disabledRows
+        const columnData = enabledColumns[i].filter((_, rowIndex) => !disabledRows.includes(rowIndex));
+        
+        // Push the processed column data to the newProcessedData array
+        newData.push(columnData);
+    }  
+    setProcessedData(newData);  
+},[enabledRows,disabledRows,enabledColumns])
+
 useEffect(()=>{
     if(mainArray.length > 0)
     {
@@ -102,18 +119,18 @@ useEffect(()=>{
         setShowTabel(false);
         setShowDrop(true);
     }
-    console.log("disabled options", disabledOptions)
-   
-
-},[disabledOptions,mainArray])
+    console.log("column enabled",enabledColumns)
+    console.log("processeddata",processedData)
+    console.log("enabledrows",enabledRows)
+    console.log("disabledrows",disabledRows)
+},[disabledOptions,mainArray,enabledColumns,disabledColumns,processedData,enabledRows,disabledRows])
 
 useEffect(()=>{
     settingDisableTable();
 },[showTabel,index,options,])
 
 const settingDisableTable = () => {
-    if(showTabel)
-    {
+    if(showTabel) {
         setDisableTable(true);
     }
 }
@@ -137,7 +154,7 @@ const fileRejectionItems = fileRejections.map(({ file, errors }) => (
     </li>
 ));
 
-
+{/* handling converting csv to an multidimensional array */}
 function handleCSV () 
 {
     uploadedFiles.forEach(file => { 
@@ -145,8 +162,10 @@ function handleCSV ()
             delimiter:";",
             skipEmptyLines: true,
             dynamicTyping:true,
+            encoding: "UTF-8",
             complete: function(results) {
                 console.log('Parsed CSV data:', results.data);    
+            
                 const convertedData = results.data.map(row =>
                    compact(row).map(cell => {
                         if (typeof cell === 'string' && !isNaN(parseFloat(cell))) {
@@ -156,36 +175,48 @@ function handleCSV ()
                         }
                     })
                 );
-                const validRows = convertedData.filter(row => Array.isArray(row) && row.length > 0);
-                setMainArray(prevArray =>[...prevArray,validRows]);
-            
+
+                const convertedToString = convertedData.map(row =>
+                    row.map(cell => String(cell))
+                );
+                const validRows = convertedToString.filter(row => Array.isArray(row) && row.length > 0);
                 
-                console.table(mainArray);
-                // setCurrentArray(mainArray[index])
+                setMainArray(prevArray => {
+                    const newArray = [...prevArray, validRows];
+                    setCurrentArray(newArray[index]);
+                    return newArray;
+                })
             }
         });
     });
 };
 
-
-const  reset = (index) =>
+{/*//nog een array inmaken? 
+//array
+// array
+// array
+//array misschien dan wel in useeffect of als het kan usememo */}
+{/* makes everything empty when you press 'terug' */}
+const  reset = () =>
 {
     setMainArray([]);
     setUploadedFiles([]);
     setCurrentArray([]);
     setDisableTable([]);
-    setDisabledRows([]);
-    setEnabledRows([]);
+    setDisabledRows([]); 
+    setEnabledRows([]); 
     setIndex(0);
     setSelectedRow(null);
     setDisabledOptions([]);
     setInputValues('');
+    setCurrentOptions([]);
+    setEnabledColumns([]);
+    setProcessedData([]);
 }
-
+{/* for selecting rows */}
 function check(index,rowIndex){
-   
+   //deze ook veranderen naar currentaray?
     setSelectedRow(rowIndex);
-
     const newDisabledRows = [];
     const newEnabledRows = [];
     for(let i = 0; i <mainArray[index].length; i++)
@@ -197,107 +228,114 @@ function check(index,rowIndex){
     setDisabledRows(newDisabledRows);
     setEnabledRows(newEnabledRows);
 
+
 }
 
-
+{/* this is for navigating the table */}
 const toggleTable =(direction)=>{
-    if(direction === 'next' && index < count -1)
-        {
-            setIndex(index + 1);
-            setSelectedRow(null);
-            setDisabledOptions([])
-            //de enabledrows of iets anders in een array zetten en zo houden
-            //eerst in een andere array zetten en dan pas resetten
+    let newIndex = index;
+    if(direction === 'next' && index < count -1){
+        newIndex = index + 1;
+    } else if (direction === 'prev' && index > 0 ){
+        newIndex = index -1;
+    }
+    setIndex(newIndex);
+    setCurrentArray(mainArray[newIndex]);
+    setSelectedRow(null);
+    setDisabledOptions([]); 
+    setDisabledRows([]); // een nieuwe array aanmaken voor een nieuw rows als 'prev' niks mee doen
+    setEnabledRows([]);
+    setInputValues('');
+    setCurrentOptions([]);
 
-            setDisabledRows([])
-            setEnabledRows([])
-            setInputValues('');
-        }
-    
-    else if (direction === 'prev' && index > 0)
-        {
-            setIndex(index - 1);   
-            setSelectedRow(null);
-            setDisabledOptions([])
-            setDisabledRows([])
-            setEnabledRows([])
-            setInputValues('');
-        }
 }
-
+{/* this happens when you change the value in autocomplete, it sets the options as a input value otherwise it stays empty */}
 const handleChange = (event,newValue,index) => {
     const updatedInputValues = [...inputValues];
     updatedInputValues[index] = newValue || '';
     setInputValues(updatedInputValues);
-    setDisableTable(false);
-    console.log("current options",currentOptions)
+    setDisableTable(false)
+
       if (newValue) {
         if (currentOptions[index]) {
             setDisabledOptions(prevOptions => prevOptions.filter(option => option !== currentOptions[index]));
         }
         setDisabledOptions(prevOptions => [...prevOptions, newValue]);
+
         setCurrentOptions(prevOptions => {
             const newOptions = [...prevOptions];
             newOptions[index] = newValue;
             return newOptions;
         });
+        console.log("index",index)
+
+        {/* looping through the current array for the column */}
+        if (!currentOptions[index]) {
+        const enabledColumn = currentArray.map(row => row[index]);
+        setEnabledColumns(prevColumns => [...prevColumns, enabledColumn]);
+        }
+
     }
- 
-    // if (newValue && !disabledOptions.includes(newValue)) {
-    //     const newdisabledoptions = disabledOptions.filter(option =>option !== '');
-    //     setDisabledOptions(prevOptions =>[...newdisabledoptions,newValue]);
-    //         if(newValue)
-    //         {
-    //             //if the value is in the same textfield make it enabled, but disabled for other textfields
-    //         }
-    // }
 };
 
+{/* remove the value out of autocomplete and out of disabledoptions */}
 const Overslaan = (index) => {
     const clearedValue = inputValues[index];
     const updatedInputValues = [...inputValues];
     updatedInputValues[index] = '';
     setInputValues(updatedInputValues);
-    
+
+
     setDisabledOptions(prevOptions => prevOptions.filter(opt => opt !== clearedValue));
     setCurrentOptions(prevOptions => {
         const newOptions = [...prevOptions];
         newOptions[index] = '';
         return newOptions;
     });
+    {/* removing the column with the coresponding button */}
+    const columnToRemove = currentArray.map(row => row[index]);
+    setEnabledColumns(prevColumns => prevColumns.filter(column => !column.every((value, i) => value === columnToRemove[i])));
 };
 
-const settingDisabledOptions = (event,index) =>{
-
-
-    // const newValue = inputValues[index];
-    // //zolang je in dezelfde textfield zit dan moet de option blijven
-    // if (newValue && !disabledOptions.includes(newValue)) {
-    //     const newdisabledoptions = disabledOptions.filter(option =>option !== '');
-    //     setDisabledOptions(prevOptions =>[...newdisabledoptions,newValue]);
-    // }
-}
-
-
-const cellStyle = (disableTable,disabledRows,rowIndex) => {
-    if (disableTable){
-        return {
-            color: 'gray',
-            backgroundColor: '#f0f0f0'
-        }
-    } else {
-        return {
-            color: disabledRows.includes(rowIndex) ? 'gray' : 'black',
-            backgroundColor: disabledRows.includes(rowIndex) ? '#f0f0f0' : 'transparent'
+{/* cellstyle */}
+const cellStyle = (disableTable,disabledRows,rowIndex,currentOptions,) => {
+        if (disableTable) {
+            return {
+                color: 'gray',
+                backgroundColor: '#f0f0f0'
+            }
+        } else {
+            if(currentOptions || processedData)
+            {
+            return {
+                // color: disabledRows.includes(rowIndex) ? 'gray' : 'black',
+                // color: enabledColumn.includes(itemsAtIndex) ? 'black' : 'gray'
+                // color: processedData.includes(rowIndex,index) ? 'black' : 'gray', 
+                backgroundColor: disabledRows.includes(rowIndex) ? '#f0f0f0' : 'transparent'
+            }
         }
     }
-}
+}  
 
+// const processedData = (enabledColumns, disabledRows) => {
+//     const newProcessedData = [];
 
+//     for (let i = 0; i < enabledColumns.length; i++) {
+//         const columnData = enabledColumns[i].filter((_, rowIndex) => !disabledRows.includes(rowIndex));
+//         newProcessedData.push(columnData);
+//     }
+
+//     return newProcessedData;
+// };
+//dit moet ik apart doen voor elke currentArray
+
+{/* sending the data to the database */}
 async function toDatabase (){
-//  const response = await converter.post('sendcsv', {csvData:csvData}); //het verstuurd maar 1 array,miss alles op 1 lijn zetten
+    // const sendData = processedData(enabledColumns, disabledRows);
+    // console.log(sendData);
+//  const response = await converter.post('sendcsv', {csvData:csvData});
 //de column moet we kloppen met elkaar dus barcode bij barcode
- console.log("response data",response);
+//  console.log("response data",response);
 }
 
 return(
@@ -328,7 +366,7 @@ return(
     <TableContainer component={Paper}>
         <Table sx={{ minWidth: 700 }} aria-label="customized table">
             <TableHead>
-                {/* headers */}
+                {/* components */}
                 <TableRow>
                     <TableCell sx={{ fontWeight:'bold' }} > 
                         eerste regel product
@@ -352,7 +390,7 @@ return(
                                 )}
                             />
                             
-                            <Button variant="text" onClick={()=> Overslaan(index)} style={{  marginLeft: 45 }}> {/* ik wil hier de value meegeven dat in de textfield */}
+                            <Button variant="text" onClick={()=> Overslaan(index)} style={{  marginLeft: 45 }}> 
                             Overslaan
                             </Button>                           
                         </div>
@@ -370,7 +408,7 @@ return(
                                 <input type="radio" name="group" id="selected" checked={selectedRow === rowIndex} onChange={()=> check(index,rowIndex)} />                    
                             </TableCell>
                             {row.map((cell, cellIndex) => (
-                                <TableCell key={cellIndex} style={cellStyle(disableTable,disabledRows,rowIndex)} > 
+                                <TableCell key={cellIndex} style={cellStyle(disableTable,disabledRows,rowIndex,currentOptions,)} > 
                                     {cell}
                                 </TableCell>
                             ))}
@@ -390,9 +428,6 @@ return(
             }
         </div>
     </div> 
-
-       //disabledRow niet andersom doen? dus enabledrows met alle data daar in 
 )}
-
 
 export default Test;
