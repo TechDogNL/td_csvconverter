@@ -64,7 +64,7 @@ const [disabledColumns,setDisabledColumns] = useState([]);
 
 const [processedData, setProcessedData] = useState([]);
 
-
+//misschien in de tabel als je naar beneden scrolt de components(headers) blijven op je scherm
 const count = mainArray.length
 
 const {
@@ -96,6 +96,7 @@ useMemo(() =>{
     setUploadedFiles(acceptedFiles);
 },[acceptedFiles]);
 
+{/* this is the final data thats getting send to the database */}
 useMemo(() => {
     const newData = [];
     
@@ -114,21 +115,25 @@ useEffect(()=>{
     {
         setShowTabel(true);
         setShowDrop(false);
+        const initialDisabledColumns = Array.from({ length: mainArray[index][0].length }, (_, index) => index);
+        setDisabledColumns(initialDisabledColumns);
     }
     else{
         setShowTabel(false);
         setShowDrop(true);
     }
+},[mainArray,index])
+
+useEffect(()=>{
     console.log("column enabled",enabledColumns)
+    console.log("disabled columns",disabledColumns)
+    console.log("current array",currentArray)
     console.log("processeddata",processedData)
-    console.log("enabledrows",enabledRows)
-    console.log("disabledrows",disabledRows)
-},[disabledOptions,mainArray,enabledColumns,disabledColumns,processedData,enabledRows,disabledRows])
+},[showTabel,index,enabledColumns, disabledColumns, currentArray, processedData,])
 
 useEffect(()=>{
     settingDisableTable();
-},[showTabel,index,options,])
-
+},[showTabel])
 const settingDisableTable = () => {
     if(showTabel) {
         setDisableTable(true);
@@ -211,11 +216,11 @@ const  reset = () =>
     setInputValues('');
     setCurrentOptions([]);
     setEnabledColumns([]);
+    setDisabledColumns([])
     setProcessedData([]);
 }
 {/* for selecting rows */}
 function check(index,rowIndex){
-   //deze ook veranderen naar currentaray?
     setSelectedRow(rowIndex);
     const newDisabledRows = [];
     const newEnabledRows = [];
@@ -227,8 +232,6 @@ function check(index,rowIndex){
         }
     setDisabledRows(newDisabledRows);
     setEnabledRows(newEnabledRows);
-
-
 }
 
 {/* this is for navigating the table */}
@@ -247,7 +250,8 @@ const toggleTable =(direction)=>{
     setEnabledRows([]);
     setInputValues('');
     setCurrentOptions([]);
-
+    setEnabledColumns([]);
+    setDisabledColumns([]);
 }
 {/* this happens when you change the value in autocomplete, it sets the options as a input value otherwise it stays empty */}
 const handleChange = (event,newValue,index) => {
@@ -269,13 +273,12 @@ const handleChange = (event,newValue,index) => {
         });
         console.log("index",index)
 
+       
         {/* looping through the current array for the column */}
-        if (!currentOptions[index]) {
         const enabledColumn = currentArray.map(row => row[index]);
         setEnabledColumns(prevColumns => [...prevColumns, enabledColumn]);
-        }
-
-    }
+        setDisabledColumns(prevColumns => prevColumns.filter(colIndex => colIndex !== index));
+      }
 };
 
 {/* remove the value out of autocomplete and out of disabledoptions */}
@@ -295,11 +298,22 @@ const Overslaan = (index) => {
     {/* removing the column with the coresponding button */}
     const columnToRemove = currentArray.map(row => row[index]);
     setEnabledColumns(prevColumns => prevColumns.filter(column => !column.every((value, i) => value === columnToRemove[i])));
+
+    const columnToAdd = currentArray.map(row => row[index]);
+    setDisabledColumns(prevColumns => {
+        if (!prevColumns.includes(index)) {
+            return [...prevColumns, index]; // Add the column index back if it's not already included
+        }
+        return prevColumns; // Otherwise, return the previous state without modification
+    });
+
+    // Add the column back to enabledColumns (if it was previously removed)
+    setEnabledColumns(prevColumns => prevColumns.filter(column => !column.every((value, i) => value === columnToAdd[i])));
 };
 
 {/* cellstyle */}
-const cellStyle = (disableTable,disabledRows,rowIndex,currentOptions,) => {
-        if (disableTable) {
+const cellStyle = (disableTable,disabledRows,rowIndex,currentOptions,processedData,columnIndex) => {
+        if (disableTable || disabledColumns.includes(columnIndex)) {
             return {
                 color: 'gray',
                 backgroundColor: '#f0f0f0'
@@ -309,7 +323,6 @@ const cellStyle = (disableTable,disabledRows,rowIndex,currentOptions,) => {
             {
             return {
                 // color: disabledRows.includes(rowIndex) ? 'gray' : 'black',
-                // color: enabledColumn.includes(itemsAtIndex) ? 'black' : 'gray'
                 // color: processedData.includes(rowIndex,index) ? 'black' : 'gray', 
                 backgroundColor: disabledRows.includes(rowIndex) ? '#f0f0f0' : 'transparent'
             }
@@ -363,9 +376,9 @@ return(
             {showTabel && 
             <div>
                 <div>
-    <TableContainer component={Paper}>
+    <TableContainer component={Paper}  style={{ maxHeight: 600, overflowY: 'auto' }}>
         <Table sx={{ minWidth: 700 }} aria-label="customized table">
-            <TableHead>
+            <TableHead style={{ position: 'sticky', top: 0 }}>
                 {/* components */}
                 <TableRow>
                     <TableCell sx={{ fontWeight:'bold' }} > 
@@ -382,7 +395,7 @@ return(
                             onChange={(event,newValue,) => handleChange(event,newValue,index)}
                             getOptionDisabled={(option => disabledOptions.includes(option))}
                             renderInput={(params) => (
-                                <TextField {...params} label="Kolom matchen of overslaan" variant="outlined" style={{ width: 200 }}   
+                                <TextField {...params} label="Kolom matchen of overslaan" variant="filled" style={{ width: 200 }} 
                                     InputProps={{
                                     ...params.InputProps,           
                                     }} 
@@ -390,7 +403,7 @@ return(
                                 )}
                             />
                             
-                            <Button variant="text" onClick={()=> Overslaan(index)} style={{  marginLeft: 45 }}> 
+                            <Button variant="contained" onClick={()=> Overslaan(index)} style={{  marginLeft: 45 }}> 
                             Overslaan
                             </Button>                           
                         </div>
@@ -408,7 +421,7 @@ return(
                                 <input type="radio" name="group" id="selected" checked={selectedRow === rowIndex} onChange={()=> check(index,rowIndex)} />                    
                             </TableCell>
                             {row.map((cell, cellIndex) => (
-                                <TableCell key={cellIndex} style={cellStyle(disableTable,disabledRows,rowIndex,currentOptions,)} > 
+                                <TableCell key={cellIndex} style={cellStyle(disableTable,disabledRows,rowIndex,currentOptions,processedData,cellIndex)} > 
                                     {cell}
                                 </TableCell>
                             ))}
