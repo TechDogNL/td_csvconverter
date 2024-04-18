@@ -1,12 +1,12 @@
 import React, {useEffect, useMemo, useState, } from "react";
 import Papa from "papaparse";
 import { useDropzone } from 'react-dropzone';
-import { Table, TableHead, TableBody, TableRow, TableCell, Paper, TableContainer, colors, Autocomplete,Button} from "@mui/material";
+import { Table, TableHead, TableBody, TableRow, TableCell, Paper, TableContainer, colors, Autocomplete,Button,Switch,FormControlLabel} from "@mui/material";
 import { DataGrid} from "@mui/x-data-grid";
 import _, { compact, first, isEmpty } from 'lodash';
 import converter from "./API/CsvConverter";
 import TextField from '@mui/material/TextField';
-
+//toastify misschien erbij zetten voor succes
 
 function Test (){
 
@@ -54,17 +54,24 @@ const [disabledRows,setDisabledRows] = useState([]);
 const [enabledRows,setEnabledRows] = useState([]);
 const [selectedRow, setSelectedRow] = useState(null);
 
-const [options,setOptions ] = useState(["productnaam","productnummer", "order1", "order2", "order3","barcode"]);
+const [table,setTable] = useState(["products","temps"]);
+const [currentTables,setCurrentTables] = useState(Array.from({}) )
+const [inputValuesTable,setInputValuesTable] = useState(table.map(()=> ''))
+
+
+const [options,setOptions ] = useState(["productnaam","productnummer", "order1", "order2", "order3","barcode","test"]);
 const [disabledOptions,setDisabledOptions] = useState([]);
-const [currentOptions, setCurrentOptions] = useState(Array.from({ length: options.length }, () => ''));
+const [currentOptions,setCurrentOptions] = useState([])
 const [inputValues, setInputValues] = useState(options.map(() => ''));
 
 const [enabledColumns,setEnabledColumns] =  useState([]);
 const [disabledColumns,setDisabledColumns] = useState([]);
 
-const [processedData, setProcessedData] = useState([]);
+const [processedData, setProcessedData] = useState({});
+const [compareProductNumber,setCompareProductNumber] = useState([]);
+const [enabledSwitch,setEnabledSwitch] = useState(false)
 
-//misschien in de tabel als je naar beneden scrolt de components(headers) blijven op je scherm
+
 const count = mainArray.length
 
 const {
@@ -98,17 +105,43 @@ useMemo(() =>{
 
 {/* this is the final data thats getting send to the database */}
 useMemo(() => {
-    const newData = [];
+    if (mainArray.length === 0) {
+        setProcessedData({})
+        return;
+    }
+    const newData = {};
     
-    for (let i = 0; i < enabledColumns.length; i++) {
-        // Slice enabledColumns with disabledRows
-        const columnData = enabledColumns[i].filter((_, rowIndex) => !disabledRows.includes(rowIndex));
+     //if currentoption.includes productnaam || order1 || order2 (table[0]) else (table[1])
+     enabledColumns.forEach((columnIndex) => {
+        const columnName = currentOptions[columnIndex];
+        if (!columnName) return; // Skip if columnName is undefined
         
-        // Push the processed column data to the newProcessedData array
-        newData.push(columnData);
-    }  
-    setProcessedData(newData);  
-},[enabledRows,disabledRows,enabledColumns])
+        const columnValues = currentArray
+            .filter((_, rowIndex) => enabledRows.includes(rowIndex))
+            .map((row) => row[columnIndex])
+            .join();
+
+        // Check if the column should be included in the 'products' table
+        if (['productnaam', 'order1', 'order2'].includes(columnName)) {
+            // Check if 'products' key exists in newData, if not, initialize it
+            if (!newData[table[0]]) {
+                newData[table[0]] = {};
+            }
+            // Assign columnValues to the corresponding column in the 'products' table
+            newData[table[0]][columnName] = columnValues;
+        } else {
+            // Check if 'temps' key exists in newData, if not, initialize it
+            if (!newData[table[1]]) {
+                newData[table[1]] = {};
+            }
+            // Assign columnValues to the corresponding column in the 'temps' table
+            newData[table[1]][columnName] = columnValues;
+        }
+    });
+
+    setProcessedData(newData)
+
+},[enabledRows,disabledRows,enabledColumns,currentOptions,compareProductNumber,table])
 
 useEffect(()=>{
     if(mainArray.length > 0)
@@ -117,6 +150,8 @@ useEffect(()=>{
         setShowDrop(false);
         const initialDisabledColumns = Array.from({ length: mainArray[index][0].length }, (_, index) => index);
         setDisabledColumns(initialDisabledColumns);
+        const initialEnabledColumns = Array.from({ length: mainArray[index][0].length }, () => '');
+        setEnabledColumns(initialEnabledColumns);
     }
     else{
         setShowTabel(false);
@@ -125,11 +160,13 @@ useEffect(()=>{
 },[mainArray,index])
 
 useEffect(()=>{
-    console.log("column enabled",enabledColumns)
-    console.log("disabled columns",disabledColumns)
-    console.log("current array",currentArray)
+    console.log("enabled columns",enabledColumns)
+    console.log("enabled rows",enabledRows)
+    console.log("current options",currentOptions)
+    console.log("inputvaluestable",inputValuesTable)
     console.log("processeddata",processedData)
-},[showTabel,index,enabledColumns, disabledColumns, currentArray, processedData,])
+    console.log("compare",compareProductNumber)
+},[showTabel,index,enabledColumns, disabledColumns, currentArray, processedData,enabledRows,currentOptions,enabledSwitch,inputValuesTable,compareProductNumber])
 
 useEffect(()=>{
     settingDisableTable();
@@ -139,6 +176,16 @@ const settingDisableTable = () => {
         setDisableTable(true);
     }
 }
+
+useEffect(()=>{
+checkProductNumber()
+},[enabledSwitch,currentOptions])
+
+useEffect(() => {
+    if (currentArray.length > 0 && currentArray[0].length > 0) {
+      setCurrentOptions(Array.from({ length: currentArray[0].length }, () => ''));
+    }
+  }, [currentArray]);
 
 const acceptedFileItems = uploadedFiles.length > 0 ?(
  acceptedFiles.map(file => (
@@ -231,7 +278,8 @@ function check(index,rowIndex){
             newEnabledRows.push(i);
         }
     setDisabledRows(newDisabledRows);
-    setEnabledRows(newEnabledRows);
+    setEnabledRows(newEnabledRows); 
+    
 }
 
 {/* this is for navigating the table */}
@@ -242,6 +290,7 @@ const toggleTable =(direction)=>{
     } else if (direction === 'prev' && index > 0 ){
         newIndex = index -1;
     }
+
     setIndex(newIndex);
     setCurrentArray(mainArray[newIndex]);
     setSelectedRow(null);
@@ -251,9 +300,9 @@ const toggleTable =(direction)=>{
     setInputValues('');
     setCurrentOptions([]);
     setEnabledColumns([]);
-    setDisabledColumns([]);
+    setDisabledColumns([]);   
 }
-{/* this happens when you change the value in autocomplete, it sets the options as a input value otherwise it stays empty */}
+{/* this happens when you change the value in autocomplete, it sets the options as a input value otherwise it stays empty and it adds that column as enabled */}
 const handleChange = (event,newValue,index) => {
     const updatedInputValues = [...inputValues];
     updatedInputValues[index] = newValue || '';
@@ -274,14 +323,19 @@ const handleChange = (event,newValue,index) => {
         console.log("index",index)
 
        
-        {/* looping through the current array for the column */}
-        const enabledColumn = currentArray.map(row => row[index]);
-        setEnabledColumns(prevColumns => [...prevColumns, enabledColumn]);
+        {/* looping through the current array for the column data add it in the array */}
+        const columnData = currentArray.map(row => row[index]);
+        setEnabledColumns(prevColumns => {
+            const updatedColumns = [...prevColumns];
+            updatedColumns[index] = index; 
+            return updatedColumns;
+        });
+
         setDisabledColumns(prevColumns => prevColumns.filter(colIndex => colIndex !== index));
       }
 };
 
-{/* remove the value out of autocomplete and out of disabledoptions */}
+{/* remove the value out of textfield and out of disabledoptions */}
 const Overslaan = (index) => {
     const clearedValue = inputValues[index];
     const updatedInputValues = [...inputValues];
@@ -295,11 +349,12 @@ const Overslaan = (index) => {
         newOptions[index] = '';
         return newOptions;
     });
-    {/* removing the column with the coresponding button */}
-    const columnToRemove = currentArray.map(row => row[index]);
-    setEnabledColumns(prevColumns => prevColumns.filter(column => !column.every((value, i) => value === columnToRemove[i])));
+    {/* removing the column data with the coresponding button returns a empty array */}
+    setEnabledColumns(prevColumns => {
+        prevColumns[index] = '';
+        return prevColumns;
+    });
 
-    const columnToAdd = currentArray.map(row => row[index]);
     setDisabledColumns(prevColumns => {
         if (!prevColumns.includes(index)) {
             return [...prevColumns, index]; // Add the column index back if it's not already included
@@ -307,8 +362,7 @@ const Overslaan = (index) => {
         return prevColumns; // Otherwise, return the previous state without modification
     });
 
-    // Add the column back to enabledColumns (if it was previously removed)
-    setEnabledColumns(prevColumns => prevColumns.filter(column => !column.every((value, i) => value === columnToAdd[i])));
+    
 };
 
 {/* cellstyle */}
@@ -321,34 +375,49 @@ const cellStyle = (disableTable,disabledRows,rowIndex,currentOptions,processedDa
         } else {
             if(currentOptions || processedData)
             {
-            return {
-                // color: disabledRows.includes(rowIndex) ? 'gray' : 'black',
-                // color: processedData.includes(rowIndex,index) ? 'black' : 'gray', 
+            return { 
                 backgroundColor: disabledRows.includes(rowIndex) ? '#f0f0f0' : 'transparent'
             }
         }
     }
 }  
-
-// const processedData = (enabledColumns, disabledRows) => {
-//     const newProcessedData = [];
-
-//     for (let i = 0; i < enabledColumns.length; i++) {
-//         const columnData = enabledColumns[i].filter((_, rowIndex) => !disabledRows.includes(rowIndex));
-//         newProcessedData.push(columnData);
-//     }
-
-//     return newProcessedData;
-// };
-//dit moet ik apart doen voor elke currentArray
+{/* checks where productnummer is and gets the value from that column */}
+const checkProductNumber = (()=> {
+        if(currentOptions.includes('productnummer')) {
+            const productnummerIndex = currentOptions.indexOf('productnummer');
+            const productnummerColumn = enabledColumns[productnummerIndex];
+            // const numbers = productnummerColumn.map(row => row);
+            setCompareProductNumber(productnummerColumn);
+        }
+        else{
+            setCompareProductNumber([]);
+        }
+    }  
+)
+//dit dan ook in usememo zetten om te chechen dat het aan of uit is
+//if productnummer exists(compare) dont add but skip that whole row(false) 
+//if enabled then update the existing productnummer(true)
 
 {/* sending the data to the database */}
 async function toDatabase (){
-    // const sendData = processedData(enabledColumns, disabledRows);
-    // console.log(sendData);
-//  const response = await converter.post('sendcsv', {csvData:csvData});
-//de column moet we kloppen met elkaar dus barcode bij barcode
-//  console.log("response data",response);
+    //hier comparen welke productnummers moeten updaten vanuit comparenumbers
+    //if(enableSwitch == true)
+    //dan updaten
+    //else skip the comparednumbers
+   
+    try {
+        const sendData = ({data: [processedData]});
+        // const setJSON = JSON.stringify(processedData);
+        // const sendData = processedData;
+        console.log("senddata",sendData);
+        const response = await converter.post('upload', sendData);
+        console.log("response data", response);
+        setShowDrop(true);
+        setShowTabel(false);
+        reset();
+    } catch (error){
+        console.error('error sending to database',error)
+    }
 }
 
 return(
@@ -376,7 +445,10 @@ return(
             {showTabel && 
             <div>
                 <div>
-    <TableContainer component={Paper}  style={{ maxHeight: 600, overflowY: 'auto' }}>
+                    <div>
+                    <FormControlLabel control={<Switch checked={enabledSwitch} onChange={()=> setEnabledSwitch(!enabledSwitch)} />} label="Bestaande producten updaten" />
+                    </div>
+    <TableContainer component={Paper} style={{ maxHeight: 600, overflowY: 'auto' }}>
         <Table sx={{ minWidth: 700 }} aria-label="customized table">
             <TableHead style={{ position: 'sticky', top: 0 }}>
                 {/* components */}
@@ -385,7 +457,7 @@ return(
                         eerste regel product
                     </TableCell>
                     {mainArray[index] && mainArray[index][0].map((array, index) => (
-                    <TableCell key={index} sx={{ fontWeight:'bold' }} >
+                    <TableCell key={index} sx={{ fontWeight:'bold', textAlign: 'center' }} >
                         <div>
                         <Autocomplete
                             id={`keuzesInput_${index}`}
@@ -403,7 +475,7 @@ return(
                                 )}
                             />
                             
-                            <Button variant="contained" onClick={()=> Overslaan(index)} style={{  marginLeft: 45 }}> 
+                            <Button variant="contained" onClick={()=> Overslaan(index)} style={{  marginTop:10 }}> 
                             Overslaan
                             </Button>                           
                         </div>
@@ -421,7 +493,7 @@ return(
                                 <input type="radio" name="group" id="selected" checked={selectedRow === rowIndex} onChange={()=> check(index,rowIndex)} />                    
                             </TableCell>
                             {row.map((cell, cellIndex) => (
-                                <TableCell key={cellIndex} style={cellStyle(disableTable,disabledRows,rowIndex,currentOptions,processedData,cellIndex)} > 
+                                <TableCell key={cellIndex} style={{textAlign: 'center', ...cellStyle(disableTable,disabledRows,rowIndex,currentOptions,processedData,cellIndex)}} > 
                                     {cell}
                                 </TableCell>
                             ))}
@@ -435,10 +507,10 @@ return(
     <button onClick={()=>toggleTable('prev')} disabled={index === 0}>vorige file</button>
     <button onClick={()=>toggleTable('next')} disabled={index === count -1}>volgende file</button>
     <button onClick={toDatabase}>naar database</button>
-    
                 </div>
             </div>
             }
+            
         </div>
     </div> 
 )}
