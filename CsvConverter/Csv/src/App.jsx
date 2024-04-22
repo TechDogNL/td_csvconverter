@@ -5,12 +5,13 @@ import Exportcsv from "./Components/csvFiles/Exportcsv";
 import Csv from "./Components/csvFiles/csv";
 import Test from "./Components/test";
 import Tabel from "./Components/csvFiles/Tabel";
-
+import { ToastContainer } from 'react-toastify';
 
 
 
 function App() {
   return(
+    <>
     <BrowserRouter>
       <Routes>
         <Route path="/import" element={<Importcsv/>} ></Route>
@@ -21,7 +22,9 @@ function App() {
 
       </Routes>
     </BrowserRouter>
-  )
+    <ToastContainer limit={1}/>
+    </>
+  );
 }
 
 export default App;

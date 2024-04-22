@@ -6,7 +6,8 @@ import { DataGrid} from "@mui/x-data-grid";
 import _, { compact, first, isEmpty } from 'lodash';
 import converter from "./API/CsvConverter";
 import TextField from '@mui/material/TextField';
-//toastify misschien erbij zetten voor succes
+import {toast} from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function Test (){
 
@@ -38,6 +39,8 @@ function Test (){
       const rejectStyle = {
         borderColor: '#ff1744'
       };
+
+     
       
 const [showTabel,setShowTabel] = useState(false);
 const [showdrop,setShowDrop] = useState(true);
@@ -70,7 +73,7 @@ const [disabledColumns,setDisabledColumns] = useState([]);
 const [processedData, setProcessedData] = useState({});
 const [compareProductNumber,setCompareProductNumber] = useState([]);
 const [enabledSwitch,setEnabledSwitch] = useState(false)
-
+const [prevTableData,setPrevTableData] = useState([]);
 
 const count = mainArray.length
 
@@ -119,8 +122,8 @@ useMemo(() => {
         const columnValues = currentArray
             .filter((_, rowIndex) => enabledRows.includes(rowIndex))
             .map((row) => row[columnIndex])
-            .join();
-
+            // .join('');
+            // const jsonColumnValues = JSON.stringify(columnValues);
         // Check if the column should be included in the 'products' table
         if (['productnaam', 'order1', 'order2'].includes(columnName)) {
             // Check if 'products' key exists in newData, if not, initialize it
@@ -138,7 +141,6 @@ useMemo(() => {
             newData[table[1]][columnName] = columnValues;
         }
     });
-
     setProcessedData(newData)
 
 },[enabledRows,disabledRows,enabledColumns,currentOptions,compareProductNumber,table])
@@ -163,10 +165,11 @@ useEffect(()=>{
     console.log("enabled columns",enabledColumns)
     console.log("enabled rows",enabledRows)
     console.log("current options",currentOptions)
-    console.log("inputvaluestable",inputValuesTable)
     console.log("processeddata",processedData)
     console.log("compare",compareProductNumber)
-},[showTabel,index,enabledColumns, disabledColumns, currentArray, processedData,enabledRows,currentOptions,enabledSwitch,inputValuesTable,compareProductNumber])
+    console.log("switch state",enabledSwitch);
+    console.log("prev table data",prevTableData)
+},[showTabel,index,enabledColumns, disabledColumns, currentArray, processedData,enabledRows,currentOptions,enabledSwitch,compareProductNumber,prevTableData])
 
 useEffect(()=>{
     settingDisableTable();
@@ -179,7 +182,7 @@ const settingDisableTable = () => {
 
 useEffect(()=>{
 checkProductNumber()
-},[enabledSwitch,currentOptions])
+},[enabledSwitch,currentOptions,enabledRows])
 
 useEffect(() => {
     if (currentArray.length > 0 && currentArray[0].length > 0) {
@@ -243,11 +246,6 @@ function handleCSV ()
     });
 };
 
-{/*//nog een array inmaken? 
-//array
-// array
-// array
-//array misschien dan wel in useeffect of als het kan usememo */}
 {/* makes everything empty when you press 'terug' */}
 const  reset = () =>
 {
@@ -287,6 +285,7 @@ const toggleTable =(direction)=>{
     let newIndex = index;
     if(direction === 'next' && index < count -1){
         newIndex = index + 1;
+        setPrevTableData(prevTable =>[...prevTable,processedData])
     } else if (direction === 'prev' && index > 0 ){
         newIndex = index -1;
     }
@@ -386,38 +385,56 @@ const checkProductNumber = (()=> {
         if(currentOptions.includes('productnummer')) {
             const productnummerIndex = currentOptions.indexOf('productnummer');
             const productnummerColumn = enabledColumns[productnummerIndex];
-            // const numbers = productnummerColumn.map(row => row);
-            setCompareProductNumber(productnummerColumn);
+            const numbers = currentArray.filter((_, rowIndex) => enabledRows.includes(rowIndex))
+            .map((row) => row[productnummerColumn])
+            // const numbers = productnummerColumn.map(row => row[enabledRows]);
+            setCompareProductNumber(numbers);
         }
         else{
             setCompareProductNumber([]);
         }
     }  
 )
-//dit dan ook in usememo zetten om te chechen dat het aan of uit is
-//if productnummer exists(compare) dont add but skip that whole row(false) 
-//if enabled then update the existing productnummer(true)
+
 
 {/* sending the data to the database */}
 async function toDatabase (){
-    //hier comparen welke productnummers moeten updaten vanuit comparenumbers
-    //if(enableSwitch == true)
-    //dan updaten
-    //else skip the comparednumbers
-   
-    try {
-        const sendData = ({data: [processedData]});
-        // const setJSON = JSON.stringify(processedData);
+    //back end doet al checkduplicate
+    //enabledswitch meegeven
+    // const jsonString = JSON.stringify(processedData)
+        const sendData = ({data: processedData});
         // const sendData = processedData;
-        console.log("senddata",sendData);
-        const response = await converter.post('upload', sendData);
-        console.log("response data", response);
-        setShowDrop(true);
-        setShowTabel(false);
-        reset();
-    } catch (error){
-        console.error('error sending to database',error)
+        if (isEmpty(processedData) ) {
+            toast.warning('Select data to send', { 
+                position: "top-right",
+                autoClose: 5000,
+                closeOnClick: true,
+                theme: "light",
+            });
+        } else {
+            try {
+            const response = await converter.post('upload', sendData);
+            console.log("response data", response);
+            toast.success('Data successfully sent to the database!', {
+                position: "top-right",
+                autoClose: 5000,
+                closeOnClick: true,
+                theme: "light",
+            });
+            setTimeout(() =>{
+                reset();
+                },1000)
+        
+    } catch (error) {
+        console.log(error);
+        toast.error('Error sending data to the database', {
+            position: "top-right",
+            autoClose: 5000,
+            closeOnClick: true,
+            theme: "light",
+        });
     }
+}
 }
 
 return(
