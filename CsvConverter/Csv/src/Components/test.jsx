@@ -61,19 +61,22 @@ const [table,setTable] = useState(["products","temps"]);
 const [currentTables,setCurrentTables] = useState(Array.from({}) )
 const [inputValuesTable,setInputValuesTable] = useState(table.map(()=> ''))
 
-
 const [options,setOptions ] = useState(["productnaam","productnummer", "order1", "order2", "order3","barcode","test"]);
 const [disabledOptions,setDisabledOptions] = useState([]);
 const [currentOptions,setCurrentOptions] = useState([])
 const [inputValues, setInputValues] = useState(options.map(() => ''));
 
+const [currentEnabledColumns,setCurrentEnabledColumns] = useState([]); //dit doen voor de tableconfigs zodat het de current als een static heeft
 const [enabledColumns,setEnabledColumns] =  useState([]);
 const [disabledColumns,setDisabledColumns] = useState([]);
 
 const [processedData, setProcessedData] = useState({});
+const [finalData,setFinaldata] = useState([]); //hier alle processedData inzetten?
 const [compareProductNumber,setCompareProductNumber] = useState([]);
 const [enabledSwitch,setEnabledSwitch] = useState(false)
-const [prevTableData,setPrevTableData] = useState([]);
+const [tableConfig,setTableConfig] = useState([]); //hier alle gegevens van een tabel zetten dus enabledrows en enabledcolumns dus de config van een tabel
+
+
 
 const count = mainArray.length
 
@@ -112,38 +115,41 @@ useMemo(() => {
         setProcessedData({})
         return;
     }
-    const newData = {};
+    const newData = [];
     
-     //if currentoption.includes productnaam || order1 || order2 (table[0]) else (table[1])
-     enabledColumns.forEach((columnIndex) => {
-        const columnName = currentOptions[columnIndex];
-        if (!columnName) return; // Skip if columnName is undefined
-        
-        const columnValues = currentArray
-            .filter((_, rowIndex) => enabledRows.includes(rowIndex))
-            .map((row) => row[columnIndex])
-            // .join('');
-            // const jsonColumnValues = JSON.stringify(columnValues);
-        // Check if the column should be included in the 'products' table
-        if (['productnaam', 'order1', 'order2'].includes(columnName)) {
-            // Check if 'products' key exists in newData, if not, initialize it
-            if (!newData[table[0]]) {
-                newData[table[0]] = {};
-            }
-            // Assign columnValues to the corresponding column in the 'products' table
-            newData[table[0]][columnName] = columnValues;
-        } else {
-            // Check if 'temps' key exists in newData, if not, initialize it
-            if (!newData[table[1]]) {
-                newData[table[1]] = {};
-            }
-            // Assign columnValues to the corresponding column in the 'temps' table
-            newData[table[1]][columnName] = columnValues;
-        }
-    });
-    setProcessedData(newData)
+    
+    //foreach enabledrow make a object and store its values to the assiocated columnname
+    const rowsLength = enabledRows.length;
+    console.log("rowslength",rowsLength);
+     //voor elke row een object aanmaken
+     enabledRows.forEach((rowIndex) => {
+        const newRow = {};
 
+        enabledColumns.forEach((columnIndex) => {
+            const columnName = currentOptions[columnIndex];
+            if (!columnName) return; // Skip if columnName is undefined
+
+            const columnValue = currentArray[rowIndex][columnIndex];
+            
+            if (['productnaam', 'order1', 'order2'].includes(columnName)) {
+                if (!newRow.products) {
+                    newRow.products = {};
+                }
+                newRow.products[columnName] = columnValue;
+            } else {
+                if (!newRow.temps) {
+                    newRow.temps = {};
+                }
+                newRow.temps[columnName] = columnValue;
+            }
+        });
+
+        newData.push(newRow)
+    });
+
+    setProcessedData(newData);
 },[enabledRows,disabledRows,enabledColumns,currentOptions,compareProductNumber,table])
+
 
 useEffect(()=>{
     if(mainArray.length > 0)
@@ -162,14 +168,14 @@ useEffect(()=>{
 },[mainArray,index])
 
 useEffect(()=>{
-    console.log("enabled columns",enabledColumns)
-    console.log("enabled rows",enabledRows)
-    console.log("current options",currentOptions)
-    console.log("processeddata",processedData)
-    console.log("compare",compareProductNumber)
+    console.log("enabled columns",enabledColumns);
+    console.log("enabled rows",enabledRows);
+    console.log("current options",currentOptions);
+    console.log("processeddata",processedData);
+    console.log("compare",compareProductNumber);
     console.log("switch state",enabledSwitch);
-    console.log("prev table data",prevTableData)
-},[showTabel,index,enabledColumns, disabledColumns, currentArray, processedData,enabledRows,currentOptions,enabledSwitch,compareProductNumber,prevTableData])
+    console.log("tableconfigs",tableConfig);
+},[showTabel,index,enabledColumns, disabledColumns, currentArray, processedData,enabledRows,currentOptions,enabledSwitch,compareProductNumber,tableConfig])
 
 useEffect(()=>{
     settingDisableTable();
@@ -280,22 +286,32 @@ function check(index,rowIndex){
     
 }
 
-{/* this is for navigating the table */}
+{/* this is for navigating the table */} //wehn you go next set the tableconfig so when you go prev it holds that value and shows it
 const toggleTable =(direction)=>{
     let newIndex = index;
     if(direction === 'next' && index < count -1){
         newIndex = index + 1;
-        setPrevTableData(prevTable =>[...prevTable,processedData])
-    } else if (direction === 'prev' && index > 0 ){
-        newIndex = index -1;
-    }
+        if(Object.keys(processedData).length !== 0){
+            // setTableConfig(prevTable =>[...prevTable,processedData]);
+            setTableConfig(prevconfig => [...prevconfig,{currentOptions,disabledRows}]); //alleen maar de indexes meegven als je inlaad die indexes laden dan ook in. van currentoptions weet je ook wel columns enabled zijn
 
+        //if tabledata > 0 load that data in otherwise empty everything
+        }
+      
+    }
+     else if (direction === 'prev' && index > 0 ){
+        newIndex = index -1;
+        // setTableConfig(prevTable =>prevTable.slice(0,-1));
+
+    }
+    
+    
     setIndex(newIndex);
     setCurrentArray(mainArray[newIndex]);
     setSelectedRow(null);
     setDisabledOptions([]); 
     setDisabledRows([]); // een nieuwe array aanmaken voor een nieuw rows als 'prev' niks mee doen
-    setEnabledRows([]);
+    setEnabledRows([]); 
     setInputValues('');
     setCurrentOptions([]);
     setEnabledColumns([]);
@@ -399,8 +415,6 @@ const checkProductNumber = (()=> {
 
 {/* sending the data to the database */}
 async function toDatabase (){
-    //back end doet al checkduplicate
-    //enabledswitch meegeven
     // const jsonString = JSON.stringify(processedData)
         const sendData = ({data: processedData});
         // const sendData = processedData;
@@ -511,7 +525,7 @@ return(
                             </TableCell>
                             {row.map((cell, cellIndex) => (
                                 <TableCell key={cellIndex} style={{textAlign: 'center', ...cellStyle(disableTable,disabledRows,rowIndex,currentOptions,processedData,cellIndex)}} > 
-                                    {cell}
+                                    {cell}  {/* misschien een placeholder als het empty is */}
                                 </TableCell>
                             ))}
                         </TableRow>
