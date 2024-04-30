@@ -1,13 +1,15 @@
 import React, {useEffect, useMemo, useState, } from "react";
 import Papa from "papaparse";
 import { useDropzone } from 'react-dropzone';
-import { Table, TableHead, TableBody, TableRow, TableCell, Paper, TableContainer, colors, Autocomplete,Button,Switch,FormControlLabel} from "@mui/material";
-import { DataGrid} from "@mui/x-data-grid";
+import { Table, TableHead, TableBody, TableRow, TableCell, Paper, TableContainer, colors, Autocomplete,Button,Switch,FormControlLabel,Modal,Box,Dialog,DialogTitle,LinearProgress,Typography } from "@mui/material";
+import {Accordion,AccordionDetails,AccordionSummary } from '@mui/material';
 import _, { compact, first, isEmpty } from 'lodash';
 import converter from "./API/CsvConverter";
 import TextField from '@mui/material/TextField';
 import {toast} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import SettingsIcon from '@mui/icons-material/Settings';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 
 function Test (){
 
@@ -40,10 +42,22 @@ function Test (){
         borderColor: '#ff1744'
       };
 
+      const boxClickStyle = {
+        position: 'absolute',
+        bottom: '10px',
+        left: '10px',
+        right: '10px',
+        borderTop: '1px solid #ccc',
+        paddingTop: '10px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'right',
+      };
      
       
 const [showTabel,setShowTabel] = useState(false);
 const [showdrop,setShowDrop] = useState(true);
+const [showResult,setShowResult] = useState(false);
 const [importData, setImportData] = useState([]);
 const [uploadedFiles, setUploadedFiles] = useState([]);
 
@@ -58,10 +72,8 @@ const [enabledRows,setEnabledRows] = useState([]);
 const [selectedRow, setSelectedRow] = useState(null);
 
 const [table,setTable] = useState(["products","temps"]);
-const [currentTables,setCurrentTables] = useState(Array.from({}) )
-const [inputValuesTable,setInputValuesTable] = useState(table.map(()=> ''))
 
-const [options,setOptions ] = useState(["productnaam","productnummer", "order1", "order2", "order3","barcode","test"]);
+const [options,setOptions ] = useState(["productnaam","productnummer", "order1", "order2", "order3","barcode","kleur"]);
 const [disabledOptions,setDisabledOptions] = useState([]);
 const [currentOptions,setCurrentOptions] = useState([])
 const [inputValues, setInputValues] = useState(options.map(() => ''));
@@ -72,13 +84,18 @@ const [disabledColumns,setDisabledColumns] = useState([]);
 
 const [processedData, setProcessedData] = useState({});
 const [finalData,setFinaldata] = useState([]); //hier alle processedData inzetten?
-const [compareProductNumber,setCompareProductNumber] = useState([]);
 const [enabledSwitch,setEnabledSwitch] = useState(false)
 const [tableConfig,setTableConfig] = useState([]); //hier alle gegevens van een tabel zetten dus enabledrows en enabledcolumns dus de config van een tabel
 
+const [openDialog,setOpenDialog] = useState(false);
+const [colorArray,setColorArray] = useState([]);
+const [atributes,setAtributes] = useState(["appel","peer","banaan"]);
+
+const[progress,setProgress] =useState(0);
 
 
 const count = mainArray.length
+
 
 const {
     acceptedFiles,
@@ -109,28 +126,21 @@ useMemo(() =>{
     setUploadedFiles(acceptedFiles);
 },[acceptedFiles]);
 
-{/* this is the final data thats getting send to the database */}
+{/* this is the final data thats getting send to the database. I have to change this for v2 */}
 useMemo(() => {
     if (mainArray.length === 0) {
         setProcessedData({})
         return;
     }
-    const newData = [];
-    
-    
-    //foreach enabledrow make a object and store its values to the assiocated columnname
-    const rowsLength = enabledRows.length;
-    console.log("rowslength",rowsLength);
-     //voor elke row een object aanmaken
-     enabledRows.forEach((rowIndex) => {
+    const newData = enabledRows.map((rowIndex) => {
         const newRow = {};
-
+    
         enabledColumns.forEach((columnIndex) => {
             const columnName = currentOptions[columnIndex];
             if (!columnName) return; // Skip if columnName is undefined
-
+    
             const columnValue = currentArray[rowIndex][columnIndex];
-            
+    
             if (['productnaam', 'order1', 'order2'].includes(columnName)) {
                 if (!newRow.products) {
                     newRow.products = {};
@@ -143,12 +153,13 @@ useMemo(() => {
                 newRow.temps[columnName] = columnValue;
             }
         });
-
-        newData.push(newRow)
+    
+        return newRow;
     });
+    
 
     setProcessedData(newData);
-},[enabledRows,disabledRows,enabledColumns,currentOptions,compareProductNumber,table])
+},[enabledRows,disabledRows,enabledColumns,currentOptions])
 
 
 useEffect(()=>{
@@ -170,12 +181,14 @@ useEffect(()=>{
 useEffect(()=>{
     console.log("enabled columns",enabledColumns);
     console.log("enabled rows",enabledRows);
-    console.log("current options",currentOptions);
+    // console.log("current options",currentOptions);
     console.log("processeddata",processedData);
-    console.log("compare",compareProductNumber);
-    console.log("switch state",enabledSwitch);
-    console.log("tableconfigs",tableConfig);
-},[showTabel,index,enabledColumns, disabledColumns, currentArray, processedData,enabledRows,currentOptions,enabledSwitch,compareProductNumber,tableConfig])
+    // console.log("switch state",enabledSwitch);
+    // console.log("tableconfigs",tableConfig);
+    console.log("color array",colorArray)
+    console.log("showresultsState",showResult)
+    console.log("uploaded files",uploadedFiles)
+},[showTabel,index,enabledColumns, disabledColumns, currentArray, processedData,enabledRows,currentOptions,enabledSwitch,tableConfig,colorArray,showResult])
 
 useEffect(()=>{
     settingDisableTable();
@@ -186,15 +199,33 @@ const settingDisableTable = () => {
     }
 }
 
-useEffect(()=>{
-checkProductNumber()
-},[enabledSwitch,currentOptions,enabledRows])
-
 useEffect(() => {
     if (currentArray.length > 0 && currentArray[0].length > 0) {
       setCurrentOptions(Array.from({ length: currentArray[0].length }, () => ''));
     }
   }, [currentArray]);
+
+  {/* for progress bar */}
+useEffect(() =>{
+    //delen door enabledrows
+    //logs voor elke row terugkrijgen?
+    if(showResult == true) {
+const interval = 1000;
+const percentagePerRow = 100/enabledRows.length;
+const timer =setInterval(() => {
+    setProgress((prevProgress) =>{
+        if(enabledRows.length === 0){
+            return 0;
+        }
+        const newProgress = prevProgress + percentagePerRow;
+        return newProgress >= 100 ? 100: newProgress;
+        
+    })
+}, interval);
+
+console.log(progress)
+return () => clearInterval(timer);
+}})
 
 const acceptedFileItems = uploadedFiles.length > 0 ?(
  acceptedFiles.map(file => (
@@ -269,24 +300,34 @@ const  reset = () =>
     setEnabledColumns([]);
     setDisabledColumns([])
     setProcessedData([]);
+    setEnabledSwitch(false);
+    setProgress(0);
+    setShowResult(false);
 }
+
+
 {/* for selecting rows */}
 function check(index,rowIndex){
     setSelectedRow(rowIndex);
     const newDisabledRows = [];
     const newEnabledRows = [];
-    for(let i = 0; i <mainArray[index].length; i++)
+    const totalRows = mainArray[index].length
+    for(let i = 0; i <totalRows; i++)
         if (i < rowIndex) {
             newDisabledRows.push(i);
-        } else if (i => rowIndex) {
+        } else {
             newEnabledRows.push(i);
         }
     setDisabledRows(newDisabledRows);
     setEnabledRows(newEnabledRows); 
     
 }
+const debounceCheck = _.debounce(check,200)
+function handleClick(index, rowIndex) {
+    debounceCheck(index, rowIndex);
+}
 
-{/* this is for navigating the table */} //wehn you go next set the tableconfig so when you go prev it holds that value and shows it
+{/* this is for navigating the table */} //when you go next, set the tableconfig, so when you go prev it holds that value and shows it
 const toggleTable =(direction)=>{
     let newIndex = index;
     if(direction === 'next' && index < count -1){
@@ -297,11 +338,10 @@ const toggleTable =(direction)=>{
 
         //if tabledata > 0 load that data in otherwise empty everything
         }
-      
     }
      else if (direction === 'prev' && index > 0 ){
         newIndex = index -1;
-        // setTableConfig(prevTable =>prevTable.slice(0,-1));
+        setTableConfig(prevTable =>prevTable.slice(0,-1));
 
     }
     
@@ -317,6 +357,7 @@ const toggleTable =(direction)=>{
     setEnabledColumns([]);
     setDisabledColumns([]);   
 }
+
 {/* this happens when you change the value in autocomplete, it sets the options as a input value otherwise it stays empty and it adds that column as enabled */}
 const handleChange = (event,newValue,index) => {
     const updatedInputValues = [...inputValues];
@@ -349,6 +390,7 @@ const handleChange = (event,newValue,index) => {
         setDisabledColumns(prevColumns => prevColumns.filter(colIndex => colIndex !== index));
       }
 };
+
 
 {/* remove the value out of textfield and out of disabledoptions */}
 const Overslaan = (index) => {
@@ -396,49 +438,72 @@ const cellStyle = (disableTable,disabledRows,rowIndex,currentOptions,processedDa
         }
     }
 }  
-{/* checks where productnummer is and gets the value from that column */}
-const checkProductNumber = (()=> {
-        if(currentOptions.includes('productnummer')) {
-            const productnummerIndex = currentOptions.indexOf('productnummer');
-            const productnummerColumn = enabledColumns[productnummerIndex];
-            const numbers = currentArray.filter((_, rowIndex) => enabledRows.includes(rowIndex))
-            .map((row) => row[productnummerColumn])
-            // const numbers = productnummerColumn.map(row => row[enabledRows]);
-            setCompareProductNumber(numbers);
-        }
-        else{
-            setCompareProductNumber([]);
-        }
-    }  
-)
+{/* opens a new window where you can set your options, it also gets the values from column 'kleur' */}
+ //hier alle kleuren pakken van de kolom kleuren if enabledcolumns contains 'kleur' get all colors from that column else 'selecteer een kolom met kleur'
+ //ook alleen maar de kleur 1 keer toevoegen
+function advancedOptions (){
+    setOpenDialog(true);
+    const colorColumnIndex = currentOptions.indexOf('kleur');
+    if(colorColumnIndex !== -1) {
+        const colorSet = new Set();
+        enabledRows.map((rowIndex) =>{
+        const color = currentArray[rowIndex][colorColumnIndex];
+        colorSet.add(color);
+        })        
+        const uniqueColors = Array.from(colorSet)
+        setColorArray(uniqueColors)
+    } else{
+        //selecteer een kolom met kleur
+        setColorArray([])
+    }
+    
+}
+const closeDialog = () =>{
+    setOpenDialog(false);
+}
+function colorClick (color){
+    //set the processedData column kleur, all to the color provided/ or update it later before sending it to the database
+    //hold the state on if button gavanceerde opties is clicked, then check if it is true
+    console.log(color)
+}
 
+function toResult() {
+    setShowTabel(false);
+    setShowDrop(false);
+    setShowResult(true);
+}
 
 {/* sending the data to the database */}
 async function toDatabase (){
-    // const jsonString = JSON.stringify(processedData)
-        const sendData = ({data: processedData});
-        // const sendData = processedData;
-        if (isEmpty(processedData) ) {
-            toast.warning('Select data to send', { 
-                position: "top-right",
-                autoClose: 5000,
-                closeOnClick: true,
-                theme: "light",
-            });
-        } else {
-            try {
+        const sendData = ({
+            data: processedData,
+            enabledSwitch: enabledSwitch
+        }); 
+        try {
             const response = await converter.post('upload', sendData);
             console.log("response data", response);
-            toast.success('Data successfully sent to the database!', {
+            const successMessage = 'Data succesfully sent to the database!'; 
+            toast.success(successMessage, {
                 position: "top-right",
                 autoClose: 5000,
                 closeOnClick: true,
                 theme: "light",
             });
+            if (response.data.updatedrows &&  response.data.updatedrows.length > 0) {
+                const updatedRows = response.data.updatedrows;
+                const updatedRowNumbers = updatedRows.join(', ');
+                toast.success(`Rows updated: ${updatedRowNumbers}`, {
+                  position: "top-right",
+                  autoClose: 5000,
+                  closeOnClick: true,
+                  theme: "light",
+                });
+              } 
             setTimeout(() =>{
-                reset();
+                toResult();
+                
                 },1000)
-        
+               
     } catch (error) {
         console.log(error);
         toast.error('Error sending data to the database', {
@@ -449,7 +514,7 @@ async function toDatabase (){
         });
     }
 }
-}
+
 
 return(
     <div>
@@ -474,11 +539,51 @@ return(
         }
         <div>
             {showTabel && 
-            <div>
-                <div>
-                    <div>
+            <>
+                <>
+                    <>
                     <FormControlLabel control={<Switch checked={enabledSwitch} onChange={()=> setEnabledSwitch(!enabledSwitch)} />} label="Bestaande producten updaten" />
-                    </div>
+                    <Button variant="contained" size="small" startIcon={<SettingsIcon/>} onClick={advancedOptions}>Geavanceerde Opties </Button>
+                       <Dialog onClose={closeDialog} open={openDialog} >
+                            <Box sx={{ width: '600px',height: '600px' }}>
+                                <DialogTitle sx={{ borderBottom: '1px solid #ccc',paddingBottom: '10px' }}>Geavanceerde Opties</DialogTitle>
+                                <Autocomplete
+                                // value={}
+                                options={atributes}
+                                renderInput={(params) => (
+                                    <TextField {...params} label="Kies een attribuut" variant="filled"
+                                        InputProps={{
+                                        ...params.InputProps,           
+                                        }} 
+                                    />
+                                    )}
+                                />
+                                <Accordion sx={{margin: 'auto'}}>
+                                    <AccordionSummary id="panel1" expandIcon={<ArrowDropDownIcon/>} sx={{ margin: 'auto' }}>
+                                        kleur
+                                    </AccordionSummary>
+                                        <AccordionDetails sx={{ margin: 'auto' }}>
+                                        {colorArray.length === 0 ? (
+                                        <p>Kies een kolom met kleur</p>
+                                            ) : (
+                                                <ul>
+                                                {colorArray.map((color, index) => (
+                                                    <li key={index}>
+                                                    <button onClick={() => colorClick(color)}>{color}</button>    
+                                                    </li>
+                                                ))}
+                                                </ul>
+                                            )}
+                                        </AccordionDetails> {/* moet de values pakken van currentarray */}
+                                </Accordion>
+                                    <Box sx={boxClickStyle}>
+                                    <Button onClick={closeDialog}>Annuleer</Button>
+                                    <Button>Oke</Button>
+                                </Box>
+                            </Box>
+                       </Dialog>
+                        </>
+
     <TableContainer component={Paper} style={{ maxHeight: 600, overflowY: 'auto' }}>
         <Table sx={{ minWidth: 700 }} aria-label="customized table">
             <TableHead style={{ position: 'sticky', top: 0 }}>
@@ -521,11 +626,11 @@ return(
                 .map((row, rowIndex) => (
                         <TableRow key={rowIndex}>
                             <TableCell> 
-                                <input type="radio" name="group" id="selected" checked={selectedRow === rowIndex} onChange={()=> check(index,rowIndex)} />                    
+                                <input type="radio" name="group" id="selected" checked={selectedRow === rowIndex} onChange={()=> handleClick(index,rowIndex)} />                    
                             </TableCell>
                             {row.map((cell, cellIndex) => (
                                 <TableCell key={cellIndex} style={{textAlign: 'center', ...cellStyle(disableTable,disabledRows,rowIndex,currentOptions,processedData,cellIndex)}} > 
-                                    {cell}  {/* misschien een placeholder als het empty is */}
+                                    {cell ?? ''} 
                                 </TableCell>
                             ))}
                         </TableRow>
@@ -533,15 +638,40 @@ return(
             </TableBody>
         </Table>
     </TableContainer>
-    
+
     <button onClick={reset}>terug</button>
     <button onClick={()=>toggleTable('prev')} disabled={index === 0}>vorige file</button>
     <button onClick={()=>toggleTable('next')} disabled={index === count -1}>volgende file</button>
     <button onClick={toDatabase}>naar database</button>
-                </div>
-            </div>
-            }
+    <button onClick={toResult}>showresult</button>
+                </>
+            </>
             
+            }
+            {showResult &&
+            <div>
+                
+                <p>taak percentage</p>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ width: '100%', mr: 1 }}>
+                        <LinearProgress variant="determinate" value={progress} />
+                    </Box>
+                    <Box sx={{ minWidth: 35 }}>
+                        <Typography variant="body2" color="text.secondary">{`${Math.round(progress)}%`}</Typography>
+                    </Box>
+                </Box>
+               
+            <p>Download:</p>
+                <ul>
+                    {uploadedFiles.map((file,index) => (
+                        <li key={index}>
+                            <a href={URL.createObjectURL(file)} download={file.name}>{file.name}</a>
+                        </li>
+                    ))}
+                </ul>
+            <button onClick={reset}>terug</button>
+            </div>
+            }         
         </div>
     </div> 
 )}

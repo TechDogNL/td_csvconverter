@@ -22,7 +22,7 @@ function App() {
 
       </Routes>
     </BrowserRouter>
-    <ToastContainer limit={1}/>
+    <ToastContainer limit={3}/>
     </>
   );
 }
