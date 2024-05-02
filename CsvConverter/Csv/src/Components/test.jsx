@@ -93,6 +93,14 @@ const [atributes,setAtributes] = useState(["appel","peer","banaan"]);
 
 const[progress,setProgress] =useState(0);
 
+const date = new Date();
+const day = String(date.getDate()).padStart(2,0);
+const month = date.toLocaleString('default', { month: 'long' });
+const year = date.getFullYear();
+const hours = String(date.getHours()).padStart(2,0);
+const minutes = String(date.getMinutes()).padStart(2,0);
+
+const time = `${day}/${month}/${year} - ${hours}:${minutes}`;
 
 const count = mainArray.length
 
@@ -183,7 +191,7 @@ useEffect(()=>{
     console.log("enabled rows",enabledRows);
     // console.log("current options",currentOptions);
     console.log("processeddata",processedData);
-    // console.log("switch state",enabledSwitch);
+    console.log("switch state",enabledSwitch);
     // console.log("tableconfigs",tableConfig);
     console.log("color array",colorArray)
     console.log("showresultsState",showResult)
@@ -209,9 +217,16 @@ useEffect(() => {
 useEffect(() =>{
     //delen door enabledrows
     //logs voor elke row terugkrijgen?
+    //als het veel bestanden zijn dan sneller maken if enabledRows.length > 200 percenteagerow 50/enabledrows.length
     if(showResult == true) {
-const interval = 1000;
-const percentagePerRow = 100/enabledRows.length;
+const interval = 500;
+let percentagePerRow;
+if(enabledRows.length > 100)
+{
+    percentagePerRow = 50/enabledRows.length
+} else{
+    percentagePerRow = 100/enabledRows.length;
+}
 const timer =setInterval(() => {
     setProgress((prevProgress) =>{
         if(enabledRows.length === 0){
@@ -466,11 +481,15 @@ function colorClick (color){
     //hold the state on if button gavanceerde opties is clicked, then check if it is true
     console.log(color)
 }
-
-function toResult() {
+    
+async function toResult() {
     setShowTabel(false);
     setShowDrop(false);
     setShowResult(true);
+    const response = await converter.get('logs'); 
+    console.log("response data",response);
+    const logs = response.data;
+    console.log("logs",logs)
 }
 
 {/* sending the data to the database */}
@@ -539,9 +558,9 @@ return(
         }
         <div>
             {showTabel && 
-            <>
-                <>
-                    <>
+            <div>
+                <div>
+                    <div>
                     <FormControlLabel control={<Switch checked={enabledSwitch} onChange={()=> setEnabledSwitch(!enabledSwitch)} />} label="Bestaande producten updaten" />
                     <Button variant="contained" size="small" startIcon={<SettingsIcon/>} onClick={advancedOptions}>Geavanceerde Opties </Button>
                        <Dialog onClose={closeDialog} open={openDialog} >
@@ -582,7 +601,7 @@ return(
                                 </Box>
                             </Box>
                        </Dialog>
-                        </>
+                        </div>
 
     <TableContainer component={Paper} style={{ maxHeight: 600, overflowY: 'auto' }}>
         <Table sx={{ minWidth: 700 }} aria-label="customized table">
@@ -644,16 +663,16 @@ return(
     <button onClick={()=>toggleTable('next')} disabled={index === count -1}>volgende file</button>
     <button onClick={toDatabase}>naar database</button>
     <button onClick={toResult}>showresult</button>
-                </>
-            </>
+                </div>
+            </div>
             
             }
             {showResult &&
             <div>
-                
+                <p>wanneer gestart: {time}</p>
                 <p>taak percentage</p>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Box sx={{ width: '100%', mr: 1 }}>
+                    <Box sx={{ width: '70%', mr: 1 }}>
                         <LinearProgress variant="determinate" value={progress} />
                     </Box>
                     <Box sx={{ minWidth: 35 }}>
@@ -669,6 +688,7 @@ return(
                         </li>
                     ))}
                 </ul>
+                <p>product update: {enabledSwitch ? 'bestaande producten updaten' : 'bestaande producten niet updaten'}</p>
             <button onClick={reset}>terug</button>
             </div>
             }         
