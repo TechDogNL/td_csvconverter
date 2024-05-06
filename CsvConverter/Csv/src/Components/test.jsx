@@ -2,7 +2,7 @@ import React, {useEffect, useMemo, useState, } from "react";
 import Papa from "papaparse";
 import { useDropzone } from 'react-dropzone';
 import { Table, TableHead, TableBody, TableRow, TableCell, Paper, TableContainer, colors, Autocomplete,Button,Switch,FormControlLabel,Modal,Box,Dialog,DialogTitle,LinearProgress,Typography } from "@mui/material";
-import {Accordion,AccordionDetails,AccordionSummary } from '@mui/material';
+import {Accordion,AccordionDetails,AccordionSummary,Divider } from '@mui/material';
 import _, { compact, first, isEmpty } from 'lodash';
 import converter from "./API/CsvConverter";
 import TextField from '@mui/material/TextField';
@@ -10,6 +10,7 @@ import {toast} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import { DataGrid } from "@mui/x-data-grid";
 
 function Test (){
 
@@ -90,7 +91,7 @@ const [tableConfig,setTableConfig] = useState([]); //hier alle gegevens van een 
 const [openDialog,setOpenDialog] = useState(false);
 const [colorArray,setColorArray] = useState([]);
 const [atributes,setAtributes] = useState(["appel","peer","banaan"]);
-
+const [logs,setLogs] = useState([]);
 const[progress,setProgress] =useState(0);
 
 const date = new Date();
@@ -189,14 +190,15 @@ useEffect(()=>{
 useEffect(()=>{
     console.log("enabled columns",enabledColumns);
     console.log("enabled rows",enabledRows);
-    // console.log("current options",currentOptions);
+    console.log("current options",currentOptions);
     console.log("processeddata",processedData);
     console.log("switch state",enabledSwitch);
     // console.log("tableconfigs",tableConfig);
     console.log("color array",colorArray)
     console.log("showresultsState",showResult)
     console.log("uploaded files",uploadedFiles)
-},[showTabel,index,enabledColumns, disabledColumns, currentArray, processedData,enabledRows,currentOptions,enabledSwitch,tableConfig,colorArray,showResult])
+    console.log("logs",logs);
+},[showTabel,index,enabledColumns, disabledColumns, currentArray, processedData,enabledRows,currentOptions,enabledSwitch,tableConfig,colorArray,showResult,logs])
 
 useEffect(()=>{
     settingDisableTable();
@@ -481,19 +483,31 @@ function colorClick (color){
     //hold the state on if button gavanceerde opties is clicked, then check if it is true
     console.log(color)
 }
-    
+
 async function toResult() {
     setShowTabel(false);
     setShowDrop(false);
     setShowResult(true);
     const response = await converter.get('logs'); 
-    console.log("response data",response);
-    const logs = response.data;
-    console.log("logs",logs)
+    console.log("response data from logs",response);
+    const logData = response.data;
+    const jsonDataIndex = logData.indexOf('[{');
+    const jsonData = JSON.parse(logData.substring(jsonDataIndex));
+
+    const extractedData = jsonData.map(entry => ({
+        time: entry.time,
+        value: entry.value,
+        status: entry.status,
+        action: entry.action,
+    }));
+    // const logs = extractedData
+    setLogs(extractedData);
+    //logs en usestate van maken de row values naast elkaar of apart op een row?
 }
 
 {/* sending the data to the database */}
 async function toDatabase (){
+    // if (currentOptions.includes('productnummer') && currentOptions.includes('productnaam')) {
         const sendData = ({
             data: processedData,
             enabledSwitch: enabledSwitch
@@ -532,8 +546,15 @@ async function toDatabase (){
             theme: "light",
         });
     }
+// } else{
+//     toast.error("Error: productnaam and productnummer is required",{
+//         position: "top-right",
+//         autoClose: 5000,
+//         closeOnClick: true,
+//         theme: "light",
+//     })
+// }
 }
-
 
 return(
     <div>
@@ -668,29 +689,60 @@ return(
             
             }
             {showResult &&
-            <div>
-                <p>wanneer gestart: {time}</p>
-                <p>taak percentage</p>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Box sx={{ width: '70%', mr: 1 }}>
-                        <LinearProgress variant="determinate" value={progress} />
+            <div style={{ alignItems: 'center',alignContent: 'center',paddingLeft: '20%' }}>
+              <h2>Importeer details</h2>
+                <p> <span style={{ fontWeight: 'bold' }}>taak percentage:</span></p>
+                <Box sx={{ display: 'flex', alignItems: 'center'}}>
+                    <Box sx={{ width: '80%', mr: 1 }}>
+                        <LinearProgress variant="determinate" value={progress} sx={{ height: '7px',bgcolor: 'green', '& .MuiLinearProgress-bar': {backgroundColor: 'lightgreen', height: '10px', },}}/>
                     </Box>
                     <Box sx={{ minWidth: 35 }}>
                         <Typography variant="body2" color="text.secondary">{`${Math.round(progress)}%`}</Typography>
                     </Box>
                 </Box>
-               
-            <p>Download:</p>
-                <ul>
-                    {uploadedFiles.map((file,index) => (
-                        <li key={index}>
-                            <a href={URL.createObjectURL(file)} download={file.name}>{file.name}</a>
-                        </li>
-                    ))}
-                </ul>
-                <p>product update: {enabledSwitch ? 'bestaande producten updaten' : 'bestaande producten niet updaten'}</p>
-            <button onClick={reset}>terug</button>
-            </div>
+                
+                <Divider sx={{ width: '80%',height: '5px' }}/>
+                <div id="outer" style={{ display: 'flex',justifyContent: 'space-between', }}>
+                 
+                    <div id="inner-left" style={{ flex: '1' }}>
+                        <p>Type: Product</p>
+                        <p>Door Wie: user</p>
+                    </div>
+                    <div id="inner-right" style={{ flex: '1 ',textAlign: 'left',paddingRight: '10%',}}>
+                        <p> wanneer gestart: {time}</p>
+                        <p> slagingspercentage</p>
+                        <p> Download:</p>
+        
+                        <ul>
+                            {uploadedFiles.map((file,index) => (
+                                <li key={index}>
+                                    <a href={URL.createObjectURL(file)} download={file.name}>{file.name}</a>
+                                </li>
+                            ))}
+                        </ul>
+                        <p>importbestand</p>
+                        <p> update:{enabledSwitch ? 'bestaande producten updaten' : 'bestaande producten niet updaten'}</p>
+                        <p>instellingen</p>
+                    </div>
+                </div>
+                <div style={{ width: '80%',height: '600px' }}>
+                    <h2>logs</h2>
+                    <DataGrid columns={[
+                        { field: 'id', headerName: 'ID', flex: 1 },
+                        { field: 'time', headerName: 'Time', flex: 1 },
+                        { field: 'value', headerName: 'Value', flex: 1 },
+                        { field: 'status', headerName: 'Status', flex: 1 },
+                        { field: 'action', headerName: 'Action', flex: 1 },
+                        ]}
+                        rows={logs.map((entry, index) => ({
+                            id: index + 1,
+                            ...entry
+                        }))}
+                        pageSize={5}
+                    />
+                    <button onClick={reset}>terug</button>
+                </div>
+            </div>      
             }         
         </div>
     </div> 
