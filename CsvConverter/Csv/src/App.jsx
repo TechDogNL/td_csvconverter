@@ -6,6 +6,7 @@ import Csv from "./Components/csvFiles/csv";
 import Test from "./Components/test";
 import Tabel from "./Components/csvFiles/Tabel";
 import { ToastContainer } from 'react-toastify';
+import Results from "./Components/csvFiles/Results";
 
 
 
@@ -16,10 +17,9 @@ function App() {
       <Routes>
         <Route path="/import" element={<Importcsv/>} ></Route>
         <Route path="/" element={<Exportcsv/>} ></Route>
-        <Route path="/csv" element={<Csv/>}    ></Route>
         <Route path="/test" element={<Test/>}  ></Route>
         <Route path="/tabel" element={<Tabel/>}  ></Route>
-
+        <Route path="/result" element={<Results/>} ></Route>
       </Routes>
     </BrowserRouter>
     <ToastContainer limit={3}/>
