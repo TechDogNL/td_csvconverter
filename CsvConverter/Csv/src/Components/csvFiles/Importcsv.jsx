@@ -2,8 +2,9 @@ import React, {useEffect, useMemo, useState, } from "react";
 import Papa from "papaparse";
 import { useDropzone } from 'react-dropzone';
 import _, { compact, first, isEmpty } from 'lodash';
+import {useNavigate} from 'react-router-dom';
 
-function Importcsv(){
+function Importcsv({setCsvData,setDownloadFiles}){
   const baseStyle = {
     flex: 1,
     display: 'flex',
@@ -33,20 +34,8 @@ function Importcsv(){
     borderColor: '#ff1744'
   };
 
-  const boxClickStyle = {
-    position: 'absolute',
-    bottom: '10px',
-    left: '10px',
-    right: '10px',
-    borderTop: '1px solid #ccc',
-    paddingTop: '10px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'right',
-  };
- 
   const [uploadedFiles, setUploadedFiles] = useState([]);
-
+  const navigate = useNavigate();
 
   const {
     acceptedFiles,
@@ -99,6 +88,7 @@ useMemo(() =>{
    {/* handling converting csv to an multidimensional array */}
 function handleCSV () 
 {
+  setCsvData([]);
     uploadedFiles.forEach(file => { 
         Papa.parse(file, {
             delimiter:";",
@@ -122,21 +112,27 @@ function handleCSV ()
                     row.map(cell => String(cell))
                 );
                 const validRows = convertedToString.filter(row => Array.isArray(row) && row.length > 0);
-                
-                setMainArray(prevArray => {
+               
+                setCsvData(prevArray => {
                     const newArray = [...prevArray, validRows];
-                    setCurrentArray(newArray[index]);
                     return newArray;
-                })
+                })              
+               setDownloadFiles(uploadedFiles);
             }
         });
     });
+    if(uploadedFiles.length > 0)
+    {
+      navigate('/tabel')
+    } else{
+
+    }
 };
 
   return(
     <div>
     <section className="container">
-                <h1>Test</h1>
+                <h2>import</h2>
                 <div {...getRootProps({style})}>
                     <input {...getInputProps()} />
                     <p>Klik hier om 1 of meer bestanden te selecteren</p>

@@ -92,7 +92,7 @@ const [openDialog,setOpenDialog] = useState(false);
 const [colorArray,setColorArray] = useState([]);
 const [atributes,setAtributes] = useState(["appel","peer","banaan"]);
 const [logs,setLogs] = useState([]);
-const[progress,setProgress] =useState(0);
+const [progress,setProgress] =useState(0);
 
 const date = new Date();
 const day = String(date.getDate()).padStart(2,0);
@@ -198,7 +198,10 @@ useEffect(()=>{
     console.log("showresultsState",showResult)
     console.log("uploaded files",uploadedFiles)
     console.log("logs",logs);
-},[showTabel,index,enabledColumns, disabledColumns, currentArray, processedData,enabledRows,currentOptions,enabledSwitch,tableConfig,colorArray,showResult,logs])
+    console.log("mainarray",mainArray);
+    console.log("currentarray",currentArray);
+    console.log('disabledrows',disabledRows)
+},[showTabel,index,enabledColumns, disabledColumns, currentArray, processedData,enabledRows,currentOptions,enabledSwitch,tableConfig,colorArray,showResult,logs,mainArray,currentArray,disabledRows])
 
 useEffect(()=>{
     settingDisableTable();
@@ -440,7 +443,7 @@ const Overslaan = (index) => {
 };
 
 {/* cellstyle */}
-const cellStyle = (disableTable,disabledRows,rowIndex,currentOptions,processedData,columnIndex) => {
+const cellStyle1 = (disableTable,disabledRows,rowIndex,currentOptions,processedData,columnIndex) => {
         if (disableTable || disabledColumns.includes(columnIndex)) {
             return {
                 color: 'gray',
@@ -481,6 +484,7 @@ const closeDialog = () =>{
 function colorClick (color){
     //set the processedData column kleur, all to the color provided/ or update it later before sending it to the database
     //hold the state on if button gavanceerde opties is clicked, then check if it is true
+    //als je op ok drukt in advancedoptions make the changes so usestate
     console.log(color)
 }
 
@@ -669,7 +673,7 @@ return(
                                 <input type="radio" name="group" id="selected" checked={selectedRow === rowIndex} onChange={()=> handleClick(index,rowIndex)} />                    
                             </TableCell>
                             {row.map((cell, cellIndex) => (
-                                <TableCell key={cellIndex} style={{textAlign: 'center', ...cellStyle(disableTable,disabledRows,rowIndex,currentOptions,processedData,cellIndex)}} > 
+                                <TableCell key={cellIndex} style={{textAlign: 'center', ...cellStyle1(disableTable,disabledRows,rowIndex,currentOptions,processedData,cellIndex)}} > 
                                     {cell ?? ''} 
                                 </TableCell>
                             ))}
