@@ -6,7 +6,7 @@
         "build": "vite build"
     },
     "devDependencies": {
-        "axios": "^1.6.7",
+        "axios": "^1.6.8",
         "laravel-vite-plugin": "^1.0.0",
         "vite": "^5.0.0"
     },
@@ -14,13 +14,14 @@
         "@emotion/react": "^11.11.4",
         "@emotion/styled": "^11.11.0",
         "@mui/material": "^5.15.14",
-        "@mui/x-data-grid": "^6.19.8",
+        "@mui/x-data-grid": "^6.19.11",
         "lodash": "^4.17.21",
+        "papaparse": "^5.4.1",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "react-dropzone": "^14.2.3",
         "react-papaparse": "^4.4.0",
-        "react-router-dom": "^6.22.3",
+        "react-router-dom": "^6.23.1",
         "react-table": "^7.8.0"
     }
 }

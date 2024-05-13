@@ -74,7 +74,7 @@ useMemo(() =>{
     ))
    ) : (
        <li>No files uploaded</li>
-   )
+   );
    
    const fileRejectionItems = fileRejections.map(({ file, errors }) => (
        <li key={file.path}>

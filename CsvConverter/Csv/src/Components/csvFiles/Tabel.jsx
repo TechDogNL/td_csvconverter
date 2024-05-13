@@ -170,13 +170,15 @@ function check(index,rowIndex){
     setEnabledRows(newEnabledRows); 
     
 };
+
 const debounceCheck = _.debounce(check,200)
 function handleClick(index, rowIndex) {
     debounceCheck(index, rowIndex);
-}
+};
 
 {/* this happens when you change the value in autocomplete, it sets the options as a input value otherwise it stays empty and it adds that column as enabled */}
 const handleChange = (event,newValue,index) => {
+    const clearedValue = inputValues[index];
     const updatedInputValues = [...inputValues];
     updatedInputValues[index] = newValue || '';
     setInputValues(updatedInputValues);
@@ -197,7 +199,7 @@ const handleChange = (event,newValue,index) => {
 
        
         {/* looping through the current array for the column data add it in the array */}
-        const columnData = currentArray.map(row => row[index]);
+        // const columnData = currentArray.map(row => row[index]);
         setEnabledColumns(prevColumns => {
             const updatedColumns = [...prevColumns];
             updatedColumns[index] = index; 
@@ -205,12 +207,14 @@ const handleChange = (event,newValue,index) => {
         });
 
         setDisabledColumns(prevColumns => prevColumns.filter(colIndex => colIndex !== index));
+      } else{
+        skip(index);
       }
 };
 
 
 {/* remove the value out of textfield and out of disabledoptions */}
-const Overslaan = (index) => {
+const skip = (index) => {
     const clearedValue = inputValues[index];
     const updatedInputValues = [...inputValues];
     updatedInputValues[index] = '';
@@ -254,10 +258,12 @@ const Overslaan = (index) => {
         setColorArray([])
     }
     
-}
+};
+
 const closeDialog = () =>{
     setOpenDialog(false);
-}
+};
+
 function colorClick (color){
     //set the processedData column kleur, all to the color provided/ or update it later before sending it to the database
     //hold the state on if button gavanceerde opties is clicked, then check if it is true
@@ -314,9 +320,9 @@ async function toDatabase () {
 }
 };
 
-function toResult () {
+function overslaan () {
   navigate('/result');
-}
+};
 
 {/* cellstyle */}
 const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnIndex) => {
@@ -397,7 +403,7 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
                             id={`keuzesInput_${index}`}
                             options={options}
                             value={inputValues[index] || null}
-                            disableClearable
+                            // disableClearable
                             onChange={(event,newValue,) => handleChange(event,newValue,index)}
                             getOptionDisabled={(option => disabledOptions.includes(option))}
                             renderInput={(params) => (
@@ -409,7 +415,7 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
                                 )}
                             />
                             
-                            <Button variant="contained" onClick={()=> Overslaan(index)} style={{  marginTop:10 }}> 
+                            <Button variant="contained" onClick={()=> skip(index)} style={{  marginTop:10 }}  tabIndex={-1}> 
                             Overslaan
                             </Button>                           
                         </div>
@@ -436,12 +442,12 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
             </TableBody>
         </Table>
     </TableContainer>
-
-    <button onClick={reset}>terug</button>
-    <button onClick={()=>toggleTable('prev')} disabled={index === 0}>vorige file</button>
-    <button onClick={()=>toggleTable('next')} disabled={index === count -1}>volgende file</button>
-    <button onClick={toDatabase}>naar database</button>
-    <button onClick={toResult}>showresult</button>
+                    <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+                        <button onClick={reset}>terug</button>
+                        <button onClick={()=>toggleTable('next')} disabled={index === count -1}>volgende file</button>
+                        <button onClick={toDatabase}>naar database</button>
+                        <button onClick={overslaan}>Overslaan</button>
+                    </div>
                 </div>
             </div>
     </div>
