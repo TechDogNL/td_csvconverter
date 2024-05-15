@@ -10,8 +10,10 @@ function Results({resultsRows,downloadfiles}) {
     const [uploadedFiles,setUploadedFiles] = useState([]);
     const [enabledSwitch,setEnabledSwitch] = useState(false);
     const [enabledRows,setEnabledRows] = useState(resultsRows);
-    const showResult = true; 
 
+    const [currentIndex,setCurrentIndex] = useState(0);
+
+    const showResult = true; 
 
     const date = new Date();
     const day = String(date.getDate()).padStart(2,0);
@@ -22,6 +24,9 @@ function Results({resultsRows,downloadfiles}) {
     
     const time = `${day}/${month}/${year} - ${hours}:${minutes}`;
 
+useEffect(()=>{
+console.log("logs",logs);
+},[logs]);
 
 useEffect(()=>{
 if(resultsRows && resultsRows.length > 0){
@@ -58,7 +63,6 @@ const timer =setInterval(() => {
     })
 }, interval);
 
-
 console.log('progressbar',progress)
 return () => clearInterval(timer);
 }else{
@@ -66,25 +70,33 @@ return () => clearInterval(timer);
 }
 })
 
+const next = () => {
+    setCurrentIndex((prevIndex) => (prevIndex + 1) % logs.length);
+};
+
 async function getLogs(){
+    try{
     const response = await converter.get('logs'); 
     console.log("response data from logs",response);
     const logData = response.data;
-    const jsonDataIndex = logData.indexOf('[{');
-    const jsonData = JSON.parse(logData.substring(jsonDataIndex));
-
-    const extractedData = jsonData.map(entry => ({
-        time: entry.time,
-        value: entry.value,
-        status: entry.status,
-        action: entry.action,
-    }));
-    // const logs = extractedData
+        
+    const extractedData = logData.map(innerArray => (
+        innerArray.map(entry => ({
+            time: entry.time,
+            value: entry.value,
+            status: entry.status,
+            action: entry.action,
+        }))
+    ));
     setLogs(extractedData);
-}
+    } catch(error) {
+        console.error("error fetching logs",error)
+    }
+};
+
 return (
 
-<div style={{ alignItems: 'center',alignContent: 'center',paddingLeft: '20%' }}>
+ <div style={{ alignItems: 'center',alignContent: 'center',paddingLeft: '20%' }}>
               <h2>Importeer details</h2>
                 <p> <span style={{ fontWeight: 'bold' }}>taak percentage:</span></p>
                 <Box sx={{ display: 'flex', alignItems: 'center'}}>
@@ -127,21 +139,30 @@ return (
                 </div>
                 <div style={{ width: '80%',height: '600px' }}>
                     <h2>logs</h2>
-                    <DataGrid columns={[
+                    {logs && logs.length > 0 ? (
+                        <>
+                    <DataGrid 
+                    columns={[
                         { field: 'id', headerName: 'ID', flex: 1 },
                         { field: 'time', headerName: 'Time', flex: 1 },
                         { field: 'value', headerName: 'Value', flex: 1 },
                         { field: 'status', headerName: 'Status', flex: 1 },
                         { field: 'action', headerName: 'Action', flex: 1 },
-                        ]}
-                        rows={logs.map((entry, index) => ({
-                            id: index + 1,
-                            ...entry
-                        }))}
+                    ]}
+                    
+                    rows={logs[currentIndex]?.map((entry, index) => ({
+                        id: index + 1,
+                        ...entry
+                    }))}
                         pageSize={5}
                     />
+                    <button onClick={next} disabled={currentIndex === logs.length -1}>Volgende</button>
+                    </>
+                     ) : (
+                        <p>No logs available</p>
+                    )}
                 </div>
-            </div>       
+            </div>        
     )
 }
 export default Results;
