@@ -1,17 +1,17 @@
 import React, {useEffect, useMemo, useState, } from "react";
-import { Table, TableHead, TableBody, TableRow, TableCell, Paper, TableContainer, colors, Autocomplete,Button,Switch,FormControlLabel,Box,Dialog,DialogTitle } from "@mui/material";
+import { Table, TableHead, TableBody, TableRow, TableCell, Paper, TableContainer, colors, Autocomplete,Button,Switch,FormControlLabel,Box,Dialog,DialogTitle, IconButton, OutlinedInput } from "@mui/material";
 import SettingsIcon from '@mui/icons-material/Settings';
 import TextField from '@mui/material/TextField';
-import {Accordion,AccordionDetails,AccordionSummary,Divider } from '@mui/material';
+import {Accordion,AccordionDetails,AccordionSummary,Divider,InputAdornment,FormControl,InputLabel } from '@mui/material';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { useNavigate } from "react-router-dom";
 import _, { compact, first, isEmpty } from 'lodash';
 import {toast} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import converter from "../API/CsvConverter";
+import AddIcon from '@mui/icons-material/Add';
 
-
-function Tabel({csvData,setResultsRows}) {
+function Tabel({csvData,setResultsRows,downloadfiles}) {
   
   const boxClickStyle = {
     position: 'absolute',
@@ -38,7 +38,7 @@ const [selectedRow, setSelectedRow] = useState(null);
 const [rows,setRows] = useState([]);
 
 
-const [options,setOptions ] = useState(["productnaam","productnummer", "order1", "order2", "order3","barcode","kleur"]);
+const [options,setOptions ] = useState(["* productnaam","* productnummer", "order1", "order2", "order3","barcode","kleur"]);
 const [disabledOptions,setDisabledOptions] = useState([]);
 const [currentOptions,setCurrentOptions] = useState([])
 const [inputValues, setInputValues] = useState(options.map(() => ''));
@@ -53,6 +53,11 @@ const [openDialog,setOpenDialog] = useState(false);
 const [colorArray,setColorArray] = useState([]);
 const [atributes,setAtributes] = useState(["appel","peer","banaan"]);
 
+const [openIndex, setOpenIndex] = useState(null); 
+const [tableName,setTableName] = useState([]);
+const [tableConfigOptions,setTableConfigOptions] = useState(["data vanuit database krijgen"]);
+
+const [batchId,setBatchId] = useState('');
 
 const count = mainArray.length;
 const navigate = useNavigate();
@@ -73,16 +78,16 @@ useMemo(() => {
     
             const columnValue = currentArray[rowIndex][columnIndex];
     
-            if (['productnaam', 'order1', 'order2'].includes(columnName)) {
+            if (['* productnaam', 'order1', 'order2'].includes(columnName)) {
                 if (!newRow.products) {
                     newRow.products = {};
                 }
-                newRow.products[columnName] = columnValue;
+                newRow.products[columnName.replace('* ', '')] = columnValue;
             } else {
                 if (!newRow.temps) {
                     newRow.temps = {};
                 }
-                newRow.temps[columnName] = columnValue;
+                newRow.temps[columnName.replace('* ', '')] = columnValue;
             }
         });
     
@@ -91,25 +96,34 @@ useMemo(() => {
     
     setResultsRows(enabledRows);
     setProcessedData(newData);
+    const combinedOptions = [[...enabledColumns],[...Object.values(currentOptions)],[...enabledRows]];
+    setTableConfigOptions(combinedOptions);
 },[enabledRows,disabledRows,enabledColumns,currentOptions]);
+
 
 useEffect(()=>{
 console.log("mainarray",mainArray);
 console.log(['disabledrows',disabledRows],['enabledrows',enabledRows]);
-console.log("prcossedData",processedData)
+console.log("procssedData",processedData);
+console.log("index",index);
+console.log("sjabloon",tableConfigOptions);
+console.log("enabled columns",enabledColumns);
+console.log("selectedrow",selectedRow);
+console.log("batchId",batchId)
+},[mainArray,csvData,disabledColumns,enabledColumns,processedData,enabledRows,index,selectedRow,batchId]);
 
-},[mainArray,csvData,disabledColumns,enabledColumns,processedData,enabledRows]);
-
+{/* get the csvData from import */}
 useEffect(()=>{
     if (csvData && csvData.length > 0) {
         const newArray = [...csvData]
         setMainArray(newArray);
         setCurrentArray(newArray[index]);
-
+        const fileNames = downloadfiles.map(file => file.name.replace('.csv',''));
+        setTableName(fileNames)
         
     }
-},[csvData]);
-
+},[csvData,downloadfiles,index]);
+{/* make the columns the same length as the currentarray */}
 useEffect(()=>{
     if(mainArray.length > 0)
     {
@@ -129,7 +143,10 @@ useEffect(() => {
       setCurrentOptions(Array.from({ length: currentArray[0].length }, () => ''));
     }
   }, [currentArray]);
-
+{/* generating a uniqueId for the batchId */}
+  useEffect(()=>{
+    setBatchId(Date.now().toString(36) + Math.random().toString(36).substring(2, 12).padStart(12, 0))
+  },[]);
 
   {/* this is for navigating the table */} 
 const toggleTable =(direction)=>{
@@ -152,6 +169,7 @@ const toggleTable =(direction)=>{
     setCurrentOptions([]);
     setEnabledColumns([]);
     setDisabledColumns([]);   
+    setEnabledSwitch(false);
 };
 
 {/* for selecting rows */}
@@ -195,11 +213,8 @@ const handleChange = (event,newValue,index) => {
             newOptions[index] = newValue;
             return newOptions;
         });
-        console.log("index",index)
 
-       
         {/* looping through the current array for the column data add it in the array */}
-        // const columnData = currentArray.map(row => row[index]);
         setEnabledColumns(prevColumns => {
             const updatedColumns = [...prevColumns];
             updatedColumns[index] = index; 
@@ -240,6 +255,15 @@ const skip = (index) => {
         return prevColumns; // Otherwise, return the previous state without modification
     });
 };
+{/* this is for the textfield when you press tab it opens the options underneath that */}
+const handleFocus = (index) => {
+    setOpenIndex(index); // Set the index of the focused Autocomplete
+  };
+
+const handleAdd = () =>{
+    console.log("ello");
+//hier moet de sjabloon komen
+};
 
 {/* opens a new window where you can set your options, it also gets the values from column 'kleur' */}
  function advancedOptions (){
@@ -278,50 +302,65 @@ function reset(){
     navigate('/import');
 };
 
+function overslaan () {
+    toggleTable('next');
+  };
+
 async function toDatabase () {
-    //if else hier maken
+    const toastStyle = {
+        position: "top-right",
+        autoClose: 5000,
+        closeOnClick:true,
+        theme: "light",
+    };
+
+    if(!processedData || processedData.length === 0 || Object.keys(processedData[0]).length === 0) {
+        toast.error("Select a row and column",toastStyle)
+        return false;
+    } else{
+    const firstData = processedData[0];
+    if((!firstData || !firstData.temps || !firstData.temps.hasOwnProperty('productnummer')) &&
+        (!firstData || !firstData.products || !firstData.products.hasOwnProperty('productnaam'))) {
+        toast.error("productnummer and productnaam is required",toastStyle);
+        return false
+    }
+   else if(!firstData || !firstData.temps || !firstData.temps.hasOwnProperty('productnummer')) {
+        toast.error("productnummer is required",toastStyle);
+        return false
+    }
+   else if(!firstData|| !firstData.products || !firstData.products.hasOwnProperty('productnaam')) {
+        toast.error("productnaam is required",toastStyle);
+        return false
+    }
+
+    else{
+        //hier de uniqueId maken dat in een useState zetetn en die dan weer gebruiken, de volgende keer dat ik weer opnieuw files ga kiezen met het een andere uniqueId hebben,dus uniqueId 1 keer maken voor elke sesie
     const sendData = ({
         data: processedData,
-        enabledSwitch: enabledSwitch
+        enabledSwitch: enabledSwitch,
+        batchId: batchId
     }); 
+   
     try {
         const response = await converter.post('upload', sendData);
         console.log("response data", response);
+
         const successMessage = 'Data succesfully sent to the database!'; 
-        toast.success(successMessage, {
-            position: "top-right",
-            autoClose: 5000,
-            closeOnClick: true,
-            theme: "light",
-        });
-        if (response.data.updatedrows &&  response.data.updatedrows.length > 0) {
+        toast.success(successMessage,toastStyle);
+
+        if (response.data.updatedrows && response.data.updatedrows.length > 0) {
             const updatedRows = response.data.updatedrows;
             const updatedRowNumbers = updatedRows.join(', ');
-            toast.success(`Rows updated: ${updatedRowNumbers}`, {
-              position: "top-right",
-              autoClose: 5000,
-              closeOnClick: true,
-              theme: "light",
-            });
+            toast.success(`Rows updated: ${updatedRowNumbers}`,toastStyle);
           } 
-        setTimeout(() =>{
-            navigate('/result')
-            
-            },1000)
+          return true;
            
 } catch (error) {
     console.log(error);
-    toast.error('Error sending data to the database', {
-        position: "top-right",
-        autoClose: 5000,
-        closeOnClick: true,
-        theme: "light",
-    });
-}
-};
-
-function overslaan () {
-  navigate('/result');
+    toast.error('Error sending data to the database', toastStyle);
+            } 
+        }
+    }
 };
 
 {/* cellstyle */}
@@ -332,11 +371,11 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
                     backgroundColor: '#f0f0f0'
                 }
             } else {
-                if(currentOptions || processedData)
+                if(currentOptions || processedData || tableConfigOptions)
                 {
                 return { 
                     backgroundColor: disabledRows.includes(rowIndex) ? '#f0f0f0' : 'transparent'
-                }
+            }
         }
     }
 }  
@@ -346,8 +385,49 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
       <div>
           <div>
                 <div>
+                <p>bestandsnaam: {tableName[index]}</p>
+                    <div style={{display:'flex',alignItems: 'center', gap: '10px'}}>
                     <FormControlLabel control={<Switch checked={enabledSwitch} onChange={()=> setEnabledSwitch(!enabledSwitch)} />} label="Bestaande producten updaten" />
                     <Button variant="contained" size="small" startIcon={<SettingsIcon/>} onClick={advancedOptions}>Geavanceerde Opties </Button>
+                    {/* <FormControl variant="outlined">
+                        <Autocomplete
+                        id="autocomplete"
+                        options={tableConfigOptions}
+                        freeSolo="true"
+                        // inputValue=""
+                        renderInput={(params) =>(
+                            <TextField style={{ width: 200 }} label="kies een sjabloon" variant="outlined"
+                            {...params}
+                            inputProps={{ 
+                                ...params.inputProps,
+                             }}
+                            />
+                        )}
+                        /> */}
+                        {/* <Autocomplete
+                        id="outlined-autocomplete"
+                        options={tableConfigOptions}
+                        freeSolo='true'
+                        renderInput={(params) => (
+                            <TextField style={{ width: 200 }} label="kies een sjabloon"
+                              {...params}
+                              variant="outlined"
+                              InputProps={{
+                                ...params.InputProps,
+                                endAdornment: (
+                                  <InputAdornment position="end">
+                                    <IconButton onClick={handleAdd} style={{marginRight: '-10px'}} > 
+                                      <AddIcon />
+                                    </IconButton>
+                                  </InputAdornment>
+                                ),
+                              }}
+                            />
+                          )}
+                        /> */}
+                    {/* </FormControl> */}
+
+                    </div>
                        <Dialog onClose={closeDialog} open={openDialog} >
                             <Box sx={{ width: '600px',height: '600px' }}>
                                 <DialogTitle sx={{ borderBottom: '1px solid #ccc',paddingBottom: '10px' }}>Geavanceerde Opties</DialogTitle>
@@ -387,12 +467,12 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
                             </Box>
                        </Dialog>
                         </div>
-
-    <TableContainer component={Paper} style={{ maxHeight: 600, overflowY: 'auto' }}>
+    {/* the table */}
+    <TableContainer component={Paper} style={{ maxHeight: 900, overflowY: 'auto' }}>
         <Table sx={{ minWidth: 700 }} aria-label="customized table">
-            <TableHead style={{ position: 'sticky', top: 0 }}>
+            <TableHead style={{ position: 'static', top: 0 }}>
                 {/* components */}
-                <TableRow>
+                <TableRow >
                     <TableCell sx={{ fontWeight:'bold' }} > 
                         eerste regel product
                     </TableCell>
@@ -402,15 +482,19 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
                         <Autocomplete
                             id={`keuzesInput_${index}`}
                             options={options}
+                            open={openIndex === index}
+                            onOpen={() => setOpenIndex(index)}
+                            onClose={() => setOpenIndex(null)}
                             value={inputValues[index] || null}
-                            // disableClearable
                             onChange={(event,newValue,) => handleChange(event,newValue,index)}
                             getOptionDisabled={(option => disabledOptions.includes(option))}
+                            autoSelect="true"
                             renderInput={(params) => (
                                 <TextField {...params} label="Kolom matchen of overslaan" variant="filled" style={{ width: 200 }} 
                                     InputProps={{
                                     ...params.InputProps,           
                                     }} 
+                                    onFocus={() => handleFocus(index)}
                                 />
                                 )}
                             />
@@ -426,6 +510,7 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
             <TableBody>
                 {/* rows */}
                 {mainArray[index] && mainArray[index]
+                .slice(0,10)
                 .filter(row=>row.length > 0, _.remove(rows, row => row.length === 0))
                 .map((row, rowIndex) => (
                         <TableRow key={rowIndex}>
@@ -443,10 +528,30 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
         </Table>
     </TableContainer>
                     <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                        <button onClick={reset}>terug</button>
-                        <button onClick={()=>toggleTable('next')} disabled={index === count -1}>volgende file</button>
+                        <button onClick={reset}>annuleren</button>
+
                         <button onClick={toDatabase}>naar database</button>
-                        <button onClick={overslaan}>Overslaan</button>
+                        <button onClick={async() =>{
+                            if(index + 1 < mainArray.length){
+                                try{
+                                    const succes = await toDatabase();
+                                    if(succes){
+                                      toggleTable('next')
+                                    }                        
+                                } catch (error) {
+                                    console.log("fout");
+                                }
+                            } else{
+                                const succes = await toDatabase();
+                                if(succes){
+                                    navigate("/result");
+                                }   
+                               
+                            }
+                        }}>{index + 1 < mainArray.length ? 'verwerk en ga naar het volgende bestand' : 'verwerk'}</button>
+                        {mainArray.length > 1 && (
+                            <button onClick={overslaan} disabled={index === count -1}>Overslaan</button>
+                        )}
                     </div>
                 </div>
             </div>

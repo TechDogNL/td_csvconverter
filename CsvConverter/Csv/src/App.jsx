@@ -14,9 +14,6 @@ function App() {
   const [csvData,setCsvData] = useState([]);
   const [resultsRows,setResultsRows] = useState();
   const [downloadfiles,setDownloadFiles] = useState([]);
-useEffect(()=>{
-  console.log("downloadedfiles",downloadfiles);
-},[downloadfiles])
   return(
     <>
     <BrowserRouter>
@@ -24,7 +21,7 @@ useEffect(()=>{
         <Route path="/import" element={<Importcsv setCsvData={setCsvData} setDownloadFiles={setDownloadFiles}/>} ></Route>
         <Route path="/" element={<Exportcsv/>} ></Route>
         <Route path="/test" element={<Test/>} ></Route>
-        <Route path="/tabel" element={<Tabel csvData={csvData} setResultsRows={setResultsRows}/>}  ></Route>
+        <Route path="/tabel" element={<Tabel csvData={csvData} downloadfiles={downloadfiles} setResultsRows={setResultsRows}/>}  ></Route>
         <Route path="/result" element={<Results resultsRows={resultsRows} downloadfiles={downloadfiles}/>} ></Route>
       </Routes>
     </BrowserRouter>
