@@ -23,9 +23,10 @@ function App() {
         <Route path="/test" element={<Test/>} ></Route>
         <Route path="/tabel" element={<Tabel csvData={csvData} downloadfiles={downloadfiles} setResultsRows={setResultsRows}/>}  ></Route>
         <Route path="/result" element={<Results resultsRows={resultsRows} downloadfiles={downloadfiles}/>} ></Route>
+        <Route path="/result/:tableId" element={<Results resultsRows={resultsRows} downloadfiles={downloadfiles}/>} ></Route>
       </Routes>
     </BrowserRouter>
-    <ToastContainer limit={3}/>
+    <ToastContainer limit={2}/>
     </>
   );
 }

@@ -64,9 +64,8 @@ const style = useMemo(() => ({
 useMemo(() =>{
   setUploadedFiles(acceptedFiles);
 },[acceptedFiles]);
-
-
-  const acceptedFileItems = uploadedFiles.length > 0 ?(
+  
+const acceptedFileItems = uploadedFiles.length > 0 ?(
     acceptedFiles.map(file => (
        <li key={file.path}>
            {file.path} - {file.size} bytes
@@ -84,7 +83,7 @@ useMemo(() =>{
            </ul>
        </li>
    ));
-
+   
    {/* handling converting csv to an multidimensional array */}
 function handleCSV () 
 {

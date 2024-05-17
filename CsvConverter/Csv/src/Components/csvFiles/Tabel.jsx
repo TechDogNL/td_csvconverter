@@ -10,6 +10,7 @@ import {toast} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import converter from "../API/CsvConverter";
 import AddIcon from '@mui/icons-material/Add';
+import { Link } from 'react-router-dom';
 
 function Tabel({csvData,setResultsRows,downloadfiles}) {
   
@@ -49,21 +50,18 @@ const [disabledColumns,setDisabledColumns] = useState([]);
 const [enabledSwitch,setEnabledSwitch] = useState(false)
 const [processedData, setProcessedData] = useState({});
 
-const [openDialog,setOpenDialog] = useState(false);
-const [colorArray,setColorArray] = useState([]);
-const [atributes,setAtributes] = useState(["appel","peer","banaan"]);
-
-const [openIndex, setOpenIndex] = useState(null); 
+const [openIndex, setOpenIndex] = useState(null);  
 const [tableName,setTableName] = useState([]);
-const [tableConfigOptions,setTableConfigOptions] = useState(["data vanuit database krijgen"]);
+
 
 const [batchId,setBatchId] = useState('');
+const [tabelId,setTabelId] = useState('');
 
 const count = mainArray.length;
 const navigate = useNavigate();
+const tableId = 1;
 
-
-{/* this is the final data thats getting send to the database. I have to change this for v2 to contain multiple arrays*/}
+{/* this is the final data thats getting send to the database.*/}
 useMemo(() => {
     if (mainArray.length === 0) {
         setProcessedData({})
@@ -96,8 +94,7 @@ useMemo(() => {
     
     setResultsRows(enabledRows);
     setProcessedData(newData);
-    const combinedOptions = [[...enabledColumns],[...Object.values(currentOptions)],[...enabledRows]];
-    setTableConfigOptions(combinedOptions);
+
 },[enabledRows,disabledRows,enabledColumns,currentOptions]);
 
 
@@ -106,11 +103,10 @@ console.log("mainarray",mainArray);
 console.log(['disabledrows',disabledRows],['enabledrows',enabledRows]);
 console.log("procssedData",processedData);
 console.log("index",index);
-console.log("sjabloon",tableConfigOptions);
 console.log("enabled columns",enabledColumns);
 console.log("selectedrow",selectedRow);
-console.log("batchId",batchId)
-},[mainArray,csvData,disabledColumns,enabledColumns,processedData,enabledRows,index,selectedRow,batchId]);
+console.log(["batchId->",batchId],["tabelId->",tabelId]);
+},[mainArray,csvData,disabledColumns,enabledColumns,processedData,enabledRows,index,selectedRow,batchId,tabelId]);
 
 {/* get the csvData from import */}
 useEffect(()=>{
@@ -123,6 +119,7 @@ useEffect(()=>{
         
     }
 },[csvData,downloadfiles,index]);
+
 {/* make the columns the same length as the currentarray */}
 useEffect(()=>{
     if(mainArray.length > 0)
@@ -137,15 +134,17 @@ useEffect(()=>{
     }
 },[mainArray,index]);
 
-{/* Options for the currentArray */}
+{/* set the length of the options on the currentarray */}
 useEffect(() => {
     if (currentArray.length > 0 && currentArray[0].length > 0) {
       setCurrentOptions(Array.from({ length: currentArray[0].length }, () => ''));
     }
   }, [currentArray]);
+
 {/* generating a uniqueId for the batchId */}
   useEffect(()=>{
-    setBatchId(Date.now().toString(36) + Math.random().toString(36).substring(2, 12).padStart(12, 0))
+    setBatchId(Date.now().toString(16) + Math.random().toString(16).substring(2, 5)) 
+    setTabelId(Date.now().toString(36) + Math.random().toString(36).substring(2, 12).padStart(12, 0))
   },[]);
 
   {/* this is for navigating the table */} 
@@ -156,7 +155,7 @@ const toggleTable =(direction)=>{
     }
      else if (direction === 'prev' && index > 0 ){
         newIndex = index -1;
-    }
+    } //dit kan weg
     
     
     setIndex(newIndex);
@@ -171,6 +170,8 @@ const toggleTable =(direction)=>{
     setDisabledColumns([]);   
     setEnabledSwitch(false);
 };
+
+
 
 {/* for selecting rows */}
 function check(index,rowIndex){
@@ -189,18 +190,14 @@ function check(index,rowIndex){
     
 };
 
-const debounceCheck = _.debounce(check,200)
-function handleClick(index, rowIndex) {
-    debounceCheck(index, rowIndex);
-};
-
-{/* this happens when you change the value in autocomplete, it sets the options as a input value otherwise it stays empty and it adds that column as enabled */}
+{/* this happens when you change the value in autocomplete, it sets the options as a input value and it adds that column as enabled  otherwise it stays empty */}
 const handleChange = (event,newValue,index) => {
     const clearedValue = inputValues[index];
     const updatedInputValues = [...inputValues];
     updatedInputValues[index] = newValue || '';
     setInputValues(updatedInputValues);
-    setDisableTable(false)
+    setDisableTable(false) //dit kan weg
+
 
       if (newValue) {
         if (currentOptions[index]) {
@@ -255,46 +252,13 @@ const skip = (index) => {
         return prevColumns; // Otherwise, return the previous state without modification
     });
 };
-{/* this is for the textfield when you press tab it opens the options underneath that */}
+
+{/* this is for the textfield, when you press tab it opens the options underneath that */}
 const handleFocus = (index) => {
     setOpenIndex(index); // Set the index of the focused Autocomplete
-  };
-
-const handleAdd = () =>{
-    console.log("ello");
-//hier moet de sjabloon komen
 };
 
-{/* opens a new window where you can set your options, it also gets the values from column 'kleur' */}
- function advancedOptions (){
-    setOpenDialog(true);
-    const colorColumnIndex = currentOptions.indexOf('kleur');
-    if(colorColumnIndex !== -1) {
-        const colorSet = new Set();
-        enabledRows.map((rowIndex) =>{
-        const color = currentArray[rowIndex][colorColumnIndex];
-        colorSet.add(color);
-        })        
-        const uniqueColors = Array.from(colorSet)
-        setColorArray(uniqueColors)
-    } else{
-        //selecteer een kolom met kleur
-        setColorArray([])
-    }
-    
-};
-
-const closeDialog = () =>{
-    setOpenDialog(false);
-};
-
-function colorClick (color){
-    //set the processedData column kleur, all to the color provided/ or update it later before sending it to the database
-    //hold the state on if button gavanceerde opties is clicked, then check if it is true
-    //als je op ok drukt in advancedoptions make the changes so usestate
-    console.log(color)
-};
-
+{/* for button annuleren */}
 function reset(){
     setMainArray([]);
     setIndex(0);
@@ -304,7 +268,9 @@ function reset(){
 
 function overslaan () {
     toggleTable('next');
+    setTabelId(Date.now().toString(36) + Math.random().toString(36).substring(2, 12).padStart(12, 0))
   };
+
 
 async function toDatabase () {
     const toastStyle = {
@@ -334,11 +300,12 @@ async function toDatabase () {
     }
 
     else{
-        //hier de uniqueId maken dat in een useState zetetn en die dan weer gebruiken, de volgende keer dat ik weer opnieuw files ga kiezen met het een andere uniqueId hebben,dus uniqueId 1 keer maken voor elke sesie
+        setTabelId(Date.now().toString(36) + Math.random().toString(36).substring(2, 12).padStart(12, 0)) //weer een nieuwe tableId aanmaken
     const sendData = ({
         data: processedData,
         enabledSwitch: enabledSwitch,
-        batchId: batchId
+        batchId: batchId,
+        tabelId: tabelId
     }); 
    
     try {
@@ -363,7 +330,7 @@ async function toDatabase () {
     }
 };
 
-{/* cellstyle */}
+{/* cellstyle for the table*/}
 const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnIndex) => {
         if (disabledColumns.includes(columnIndex)) {
                 return {
@@ -371,7 +338,7 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
                     backgroundColor: '#f0f0f0'
                 }
             } else {
-                if(currentOptions || processedData || tableConfigOptions)
+                if(currentOptions || processedData)
                 {
                 return { 
                     backgroundColor: disabledRows.includes(rowIndex) ? '#f0f0f0' : 'transparent'
@@ -388,96 +355,19 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
                 <p>bestandsnaam: {tableName[index]}</p>
                     <div style={{display:'flex',alignItems: 'center', gap: '10px'}}>
                     <FormControlLabel control={<Switch checked={enabledSwitch} onChange={()=> setEnabledSwitch(!enabledSwitch)} />} label="Bestaande producten updaten" />
-                    <Button variant="contained" size="small" startIcon={<SettingsIcon/>} onClick={advancedOptions}>Geavanceerde Opties </Button>
-                    {/* <FormControl variant="outlined">
-                        <Autocomplete
-                        id="autocomplete"
-                        options={tableConfigOptions}
-                        freeSolo="true"
-                        // inputValue=""
-                        renderInput={(params) =>(
-                            <TextField style={{ width: 200 }} label="kies een sjabloon" variant="outlined"
-                            {...params}
-                            inputProps={{ 
-                                ...params.inputProps,
-                             }}
-                            />
-                        )}
-                        /> */}
-                        {/* <Autocomplete
-                        id="outlined-autocomplete"
-                        options={tableConfigOptions}
-                        freeSolo='true'
-                        renderInput={(params) => (
-                            <TextField style={{ width: 200 }} label="kies een sjabloon"
-                              {...params}
-                              variant="outlined"
-                              InputProps={{
-                                ...params.InputProps,
-                                endAdornment: (
-                                  <InputAdornment position="end">
-                                    <IconButton onClick={handleAdd} style={{marginRight: '-10px'}} > 
-                                      <AddIcon />
-                                    </IconButton>
-                                  </InputAdornment>
-                                ),
-                              }}
-                            />
-                          )}
-                        /> */}
-                    {/* </FormControl> */}
-
                     </div>
-                       <Dialog onClose={closeDialog} open={openDialog} >
-                            <Box sx={{ width: '600px',height: '600px' }}>
-                                <DialogTitle sx={{ borderBottom: '1px solid #ccc',paddingBottom: '10px' }}>Geavanceerde Opties</DialogTitle>
-                                <Autocomplete
-                                // value={}
-                                options={atributes}
-                                renderInput={(params) => (
-                                    <TextField {...params} label="Kies een attribuut" variant="filled"
-                                        InputProps={{
-                                        ...params.InputProps,           
-                                        }} 
-                                    />
-                                    )}
-                                />
-                                <Accordion sx={{margin: 'auto'}}>
-                                    <AccordionSummary id="panel1" expandIcon={<ArrowDropDownIcon/>} sx={{ margin: 'auto' }}>
-                                        kleur
-                                    </AccordionSummary>
-                                        <AccordionDetails sx={{ margin: 'auto' }}>
-                                        {colorArray.length === 0 ? (
-                                        <p>Kies een kolom met kleur</p>
-                                            ) : (
-                                                <ul>
-                                                {colorArray.map((color, index) => (
-                                                    <li key={index}>
-                                                    <button onClick={() => colorClick(color)}>{color}</button>    
-                                                    </li>
-                                                ))}
-                                                </ul>
-                                            )}
-                                        </AccordionDetails> 
-                                </Accordion>
-                                    <Box sx={boxClickStyle}>
-                                    <Button onClick={closeDialog}>Annuleer</Button>
-                                    <Button>Oke</Button>
-                                </Box>
-                            </Box>
-                       </Dialog>
-                        </div>
+                </div>
     {/* the table */}
     <TableContainer component={Paper} style={{ maxHeight: 900, overflowY: 'auto' }}>
         <Table sx={{ minWidth: 700 }} aria-label="customized table">
             <TableHead style={{ position: 'static', top: 0 }}>
-                {/* components */}
+                {/* textfields and buttons in the header */}
                 <TableRow >
                     <TableCell sx={{ fontWeight:'bold' }} > 
                         eerste regel product
                     </TableCell>
                     {mainArray[index] && mainArray[index][0].map((array, index) => (
-                    <TableCell key={index} sx={{ fontWeight:'bold', textAlign: 'center' }} >
+                    <TableCell key={index} style={{ fontWeight:'bold', textAlign: 'center' }} >
                         <div>
                         <Autocomplete
                             id={`keuzesInput_${index}`}
@@ -488,7 +378,7 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
                             value={inputValues[index] || null}
                             onChange={(event,newValue,) => handleChange(event,newValue,index)}
                             getOptionDisabled={(option => disabledOptions.includes(option))}
-                            autoSelect="true"
+                            autoSelect={true}
                             renderInput={(params) => (
                                 <TextField {...params} label="Kolom matchen of overslaan" variant="filled" style={{ width: 200 }} 
                                     InputProps={{
@@ -515,7 +405,7 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
                 .map((row, rowIndex) => (
                         <TableRow key={rowIndex}>
                             <TableCell> 
-                                <input type="radio" name="group" id="selected" checked={selectedRow === rowIndex} onChange={()=> handleClick(index,rowIndex)} />                    
+                                <input type="radio" name="group" id="selected" checked={selectedRow === rowIndex} onChange={()=> check(index,rowIndex)} />                    
                             </TableCell>
                             {row.map((cell, cellIndex) => (
                                 <TableCell key={cellIndex} style={{textAlign: 'center', ...cellStyle(disabledRows,rowIndex,currentOptions,processedData,cellIndex)}} > 
@@ -529,8 +419,6 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
     </TableContainer>
                     <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
                         <button onClick={reset}>annuleren</button>
-
-                        <button onClick={toDatabase}>naar database</button>
                         <button onClick={async() =>{
                             if(index + 1 < mainArray.length){
                                 try{
@@ -544,7 +432,7 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
                             } else{
                                 const succes = await toDatabase();
                                 if(succes){
-                                    navigate("/result");
+                                    navigate("/result"); 
                                 }   
                                
                             }

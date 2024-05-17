@@ -2,8 +2,10 @@ import React, {useEffect, useMemo, useState, } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { Box,LinearProgress,Typography,Divider } from "@mui/material";
 import converter from "../API/CsvConverter";
+import { useParams } from 'react-router-dom';
 
-function Results({resultsRows,downloadfiles}) {
+
+function Results({resultsRows,downloadfiles,}) {
 
     const [logs,setLogs] = useState([]);
     const [progress,setProgress] =useState(0);
@@ -13,7 +15,7 @@ function Results({resultsRows,downloadfiles}) {
 
     const [currentIndex,setCurrentIndex] = useState(0);
 
-    const showResult = true; 
+    // const showResult = true; 
 
     const date = new Date();
     const day = String(date.getDate()).padStart(2,0);
@@ -24,9 +26,12 @@ function Results({resultsRows,downloadfiles}) {
     
     const time = `${day}/${month}/${year} - ${hours}:${minutes}`;
 
+    const { tableId } = useParams(); //dit is voor id
+
 useEffect(()=>{
 console.log("logs",logs);
-},[logs]);
+console.log("tableid",tableId)
+},[logs,tableId]);
 
 useEffect(()=>{
 if(resultsRows && resultsRows.length > 0){
@@ -40,6 +45,15 @@ if(resultsRows && resultsRows.length > 0){
 }
 },[resultsRows]);
 
+// useEffect(()=>{
+//     async function getResults () {
+//     const response = await converter.get(`/result/${tableId}`);
+//     console.log("response from results",response)
+//     const data = response.data;
+
+//     }
+//     getResults();
+// })
 
      {/* for progress bar */}
 useEffect(() =>{
@@ -76,7 +90,7 @@ const next = () => {
 
 async function getLogs(){
     try{
-    const response = await converter.get('logs'); 
+    const response = await converter.get('logs'); //of hier moet met id. kijken bij donate
     console.log("response data from logs",response);
     const logData = response.data;
         
@@ -156,7 +170,7 @@ return (
                     }))}
                         pageSize={5}
                     />
-                    <button onClick={next} disabled={currentIndex === logs.length -1}>Volgende</button>
+                    <button onClick={next} disabled={currentIndex === logs.length -1}>Volgende</button> {/* hierbij moet je naar de volgende result/id gaan */}
                     </>
                      ) : (
                         <p>No logs available</p>
