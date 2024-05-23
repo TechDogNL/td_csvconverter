@@ -8,13 +8,14 @@ import { useParams } from 'react-router-dom';
 function Results({resultsRows,downloadfiles,}) {
 
     const [logs,setLogs] = useState([]);
+    const [resultData, setResultData] = useState([]);
     const [progress,setProgress] =useState(0);
     const [uploadedFiles,setUploadedFiles] = useState([]);
     const [enabledSwitch,setEnabledSwitch] = useState(false);
-    const [enabledRows,setEnabledRows] = useState(resultsRows);
+    const [enabledRows,setEnabledRows] = useState();
 
     const [currentIndex,setCurrentIndex] = useState(0);
-
+    const [time,setTime] = useState();
     // const showResult = true; 
 
     const date = new Date();
@@ -24,14 +25,16 @@ function Results({resultsRows,downloadfiles,}) {
     const hours = String(date.getHours()).padStart(2,0);
     const minutes = String(date.getMinutes()).padStart(2,0);
     
-    const time = `${day}/${month}/${year} - ${hours}:${minutes}`;
+    // const time = `${day}/${month}/${year} - ${hours}:${minutes}`; //dit veranderen naar een useState , created_at gebruiken als time
 
     const { tableId } = useParams(); //dit is voor id
 
 useEffect(()=>{
 console.log("logs",logs);
 console.log("tableid",tableId)
-},[logs,tableId]);
+console.log("resultdata",resultData)
+console.log("enabledrows",enabledRows);
+},[logs,tableId,resultData,enabledRows]);
 
 useEffect(()=>{
 if(resultsRows && resultsRows.length > 0){
@@ -45,15 +48,40 @@ if(resultsRows && resultsRows.length > 0){
 }
 },[resultsRows]);
 
-// useEffect(()=>{
-//     async function getResults () {
-//     const response = await converter.get(`/result/${tableId}`);
-//     console.log("response from results",response)
-//     const data = response.data;
+{/* getting data from database */}
+useEffect(()=>{
+    async function getResults () {
+        try{
+        const response = await converter.get(`/result/${tableId}`);
+        console.log("response from results",response)
+        const data = response.data;
 
-//     }
-//     getResults();
-// })
+
+        const rows = data.flatMap(entry => {
+            const enabledRowsArray = JSON.parse(entry.enabledRows);
+            const resultsTime = (entry.created_at);
+            const rows = [];
+            // Loop through each entry
+            for (const key in entry) {
+                // Skip non-value keys like id, unique_identifier, batch_id, etc.
+                if (!['id', 'unique_identifier', 'batch_id', 'table_id','action','status', 'enabledRows', 'updated_at', 'created_at'].includes(key)) {
+                    const value = entry[key];
+                    if (value !== null && value !== undefined && value !== '') {
+                        rows.push({ key: key, value: value, time: entry.created_at, action: entry.action, status: entry.action });
+                    }
+                }
+            }
+            setTime(resultsTime);
+            setEnabledRows(enabledRowsArray);
+            return rows;
+        });
+        setResultData(rows);
+        } catch(error) {
+    console.error("error")
+    }
+}
+    getResults();
+},[])
 
      {/* for progress bar */}
 useEffect(() =>{
@@ -98,7 +126,7 @@ async function getLogs(){
         innerArray.map(entry => ({
             time: entry.time,
             value: entry.value,
-            status: entry.status,
+            status: entry.action,
             action: entry.action,
         }))
     ));
@@ -153,18 +181,19 @@ return (
                 </div>
                 <div style={{ width: '80%',height: '600px' }}>
                     <h2>logs</h2>
-                    {logs && logs.length > 0 ? (
+                    {resultData && resultData.length > 0 ? (
                         <>
                     <DataGrid 
                     columns={[
                         { field: 'id', headerName: 'ID', flex: 1 },
-                        { field: 'time', headerName: 'Time', flex: 1 },
+                        // { field: 'time', headerName: 'Time', flex: 1 },
+                        { field: 'key', headerName: 'key', flex: 1 },
                         { field: 'value', headerName: 'Value', flex: 1 },
                         { field: 'status', headerName: 'Status', flex: 1 },
                         { field: 'action', headerName: 'Action', flex: 1 },
                     ]}
                     
-                    rows={logs[currentIndex]?.map((entry, index) => ({
+                    rows={resultData.map((entry, index) => ({
                         id: index + 1,
                         ...entry
                     }))}

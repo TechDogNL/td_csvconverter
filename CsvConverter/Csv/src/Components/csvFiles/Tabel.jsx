@@ -75,7 +75,7 @@ useMemo(() => {
             if (!columnName) return; // Skip if columnName is undefined
     
             const columnValue = currentArray[rowIndex][columnIndex];
-    
+            {/* if you want to change whats send to the database, then change below, columnName is the option the user chooses */}
             if (['* productnaam', 'order1', 'order2'].includes(columnName)) {
                 if (!newRow.products) {
                     newRow.products = {};
@@ -106,7 +106,8 @@ console.log("index",index);
 console.log("enabled columns",enabledColumns);
 console.log("selectedrow",selectedRow);
 console.log(["batchId->",batchId],["tabelId->",tabelId]);
-},[mainArray,csvData,disabledColumns,enabledColumns,processedData,enabledRows,index,selectedRow,batchId,tabelId]);
+console.log("downloadedfils",downloadfiles);
+},[mainArray,csvData,disabledColumns,enabledColumns,processedData,enabledRows,index,selectedRow,batchId,tabelId,downloadfiles]);
 
 {/* get the csvData from import */}
 useEffect(()=>{
@@ -144,7 +145,7 @@ useEffect(() => {
 {/* generating a uniqueId for the batchId */}
   useEffect(()=>{
     setBatchId(Date.now().toString(16) + Math.random().toString(16).substring(2, 5)) 
-    setTabelId(Date.now().toString(36) + Math.random().toString(36).substring(2, 12).padStart(12, 0))
+    setTabelId(Date.now().toString(36) + Math.random().toString(36).substring(2, 12).padStart(12, 0)) //dit kan weg
   },[]);
 
   {/* this is for navigating the table */} 
@@ -268,7 +269,7 @@ function reset(){
 
 function overslaan () {
     toggleTable('next');
-    setTabelId(Date.now().toString(36) + Math.random().toString(36).substring(2, 12).padStart(12, 0))
+    setTabelId(Date.now().toString(36) + Math.random().toString(36).substring(2, 12).padStart(12, 0)) //dit kan weg
   };
 
 
@@ -300,12 +301,13 @@ async function toDatabase () {
     }
 
     else{
-        setTabelId(Date.now().toString(36) + Math.random().toString(36).substring(2, 12).padStart(12, 0)) //weer een nieuwe tableId aanmaken
     const sendData = ({
         data: processedData,
         enabledSwitch: enabledSwitch,
         batchId: batchId,
-        tabelId: tabelId
+        tabelId: tabelId,
+        tableName: tableName[index],
+        enabledRows: enabledRows,
     }); 
    
     try {
@@ -324,7 +326,12 @@ async function toDatabase () {
            
 } catch (error) {
     console.log(error);
-    toast.error('Error sending data to the database', toastStyle);
+    if ( error.response.data && error.response.data.error === "Productnummer doesnt exist.") {
+        toast.error("Productnummer doesn't exist.", toastStyle); 
+    } else {
+        toast.error('Error sending data to the database', toastStyle);
+    }
+    return false;
             } 
         }
     }
