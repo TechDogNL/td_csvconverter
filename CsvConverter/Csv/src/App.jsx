@@ -14,6 +14,7 @@ function App() {
   const [csvData,setCsvData] = useState([]);
   const [resultsRows,setResultsRows] = useState();
   const [downloadfiles,setDownloadFiles] = useState([]);
+  const [tableIdsProp,setTableidsProp] = useState([]);
   return(
     <>
     <BrowserRouter>
@@ -21,9 +22,9 @@ function App() {
         <Route path="/import" element={<Importcsv setCsvData={setCsvData} setDownloadFiles={setDownloadFiles}/>} ></Route>
         <Route path="/" element={<Exportcsv/>} ></Route>
         <Route path="/test" element={<Test/>} ></Route>
-        <Route path="/tabel" element={<Tabel csvData={csvData} downloadfiles={downloadfiles} setResultsRows={setResultsRows}/>}  ></Route>
+        <Route path="/tabel" element={<Tabel csvData={csvData} downloadfiles={downloadfiles} setResultsRows={setResultsRows} setTableidsProp={setTableidsProp}/>}  ></Route>
         <Route path="/result" element={<Results resultsRows={resultsRows} downloadfiles={downloadfiles}/>} ></Route>
-        <Route path="/result/:tableId" element={<Results resultsRows={resultsRows} downloadfiles={downloadfiles}/>} ></Route>
+        <Route path="/result/:tableId" element={<Results resultsRows={resultsRows} downloadfiles={downloadfiles} tableIdsProp={tableIdsProp}/>} ></Route>
       </Routes>
     </BrowserRouter>
     <ToastContainer limit={2}/>

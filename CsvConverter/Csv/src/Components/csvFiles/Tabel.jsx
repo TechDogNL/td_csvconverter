@@ -12,7 +12,7 @@ import converter from "../API/CsvConverter";
 import AddIcon from '@mui/icons-material/Add';
 import { Link } from 'react-router-dom';
 
-function Tabel({csvData,setResultsRows,downloadfiles}) {
+function Tabel({csvData,setResultsRows,downloadfiles,setTableidsProp}) {
   
   const boxClickStyle = {
     position: 'absolute',
@@ -55,11 +55,11 @@ const [tableName,setTableName] = useState([]);
 
 
 const [batchId,setBatchId] = useState('');
-const [tabelId,setTabelId] = useState('');
+const [tabelIds,setTabelIds] = useState([]);
 
 const count = mainArray.length;
 const navigate = useNavigate();
-const tableId = 1;
+
 
 {/* this is the final data thats getting send to the database.*/}
 useMemo(() => {
@@ -105,9 +105,9 @@ console.log("procssedData",processedData);
 console.log("index",index);
 console.log("enabled columns",enabledColumns);
 console.log("selectedrow",selectedRow);
-console.log(["batchId->",batchId],["tabelId->",tabelId]);
-console.log("downloadedfils",downloadfiles);
-},[mainArray,csvData,disabledColumns,enabledColumns,processedData,enabledRows,index,selectedRow,batchId,tabelId,downloadfiles]);
+console.log(["batchId->",batchId],["tabelId->",tabelIds]);
+console.log("downloadedfiles",downloadfiles);
+},[mainArray,csvData,disabledColumns,enabledColumns,processedData,enabledRows,index,selectedRow,batchId,tabelIds,downloadfiles]);
 
 {/* get the csvData from import */}
 useEffect(()=>{
@@ -144,8 +144,7 @@ useEffect(() => {
 
 {/* generating a uniqueId for the batchId */}
   useEffect(()=>{
-    setBatchId(Date.now().toString(16) + Math.random().toString(16).substring(2, 5)) 
-    setTabelId(Date.now().toString(36) + Math.random().toString(36).substring(2, 12).padStart(12, 0)) //dit kan weg
+    setBatchId(Date.now().toString(16) + Math.random().toString(16).substring(2, 5));
   },[]);
 
   {/* this is for navigating the table */} 
@@ -269,7 +268,7 @@ function reset(){
 
 function overslaan () {
     toggleTable('next');
-    setTabelId(Date.now().toString(36) + Math.random().toString(36).substring(2, 12).padStart(12, 0)) //dit kan weg
+    
   };
 
 
@@ -305,9 +304,10 @@ async function toDatabase () {
         data: processedData,
         enabledSwitch: enabledSwitch,
         batchId: batchId,
-        tabelId: tabelId,
+        tabelId: tabelIds,
         tableName: tableName[index],
         enabledRows: enabledRows,
+        downloadfiles: downloadfiles,
     }); 
    
     try {
@@ -322,7 +322,29 @@ async function toDatabase () {
             const updatedRowNumbers = updatedRows.join(', ');
             toast.success(`Rows updated: ${updatedRowNumbers}`,toastStyle);
           } 
-          return true;
+          let tableId;
+          const responseData = response.data["data processed"];
+          
+          {/* getting the tableId from the response, if its not in products then look in temps, return the tableId */}
+          if (responseData && Array.isArray(responseData.products) && responseData.products.length > 0) {
+              tableId = responseData.products[0].table_id;
+              console.log('table_id from products:', tableId);
+          } else {
+              if (responseData && Array.isArray(responseData.temps) && responseData.temps.length > 0) {
+                  tableId = responseData.temps[0].table_id;
+                  console.log('table_id from temps:', tableId);
+              }
+          }
+  
+          if (tableId) {
+            setTabelIds([...tabelIds,tableId]);
+            setTableidsProp([...tabelIds,tableId])
+              return tableId; //put the tableId in an useState array then do tableId[0] to get the first tableId
+          } else {
+              throw new Error("Invalid response structure: tableId not found");
+          }
+  
+        
            
 } catch (error) {
     console.log(error);
@@ -437,9 +459,15 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
                                     console.log("fout");
                                 }
                             } else{
-                                const succes = await toDatabase();
-                                if(succes){
-                                    navigate("/result"); 
+                                const tableId = await toDatabase();
+                                if(tableId){
+                                    // navigate(`/result/${tableId}`); //misschien hier tableId getten?
+                                    try{
+                                        navigate(`/result/${tabelIds[0]}`);
+                                    } catch (error) {
+
+                                    }
+                                    // navigate("/result");
                                 }   
                                
                             }

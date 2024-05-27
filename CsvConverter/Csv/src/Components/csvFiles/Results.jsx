@@ -2,10 +2,10 @@ import React, {useEffect, useMemo, useState, } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { Box,LinearProgress,Typography,Divider } from "@mui/material";
 import converter from "../API/CsvConverter";
-import { useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
-
-function Results({resultsRows,downloadfiles,}) {
+function Results({resultsRows,downloadfiles,tableIdsProp}) {
 
     const [logs,setLogs] = useState([]);
     const [resultData, setResultData] = useState([]);
@@ -16,16 +16,9 @@ function Results({resultsRows,downloadfiles,}) {
 
     const [currentIndex,setCurrentIndex] = useState(0);
     const [time,setTime] = useState();
-    // const showResult = true; 
 
-    const date = new Date();
-    const day = String(date.getDate()).padStart(2,0);
-    const month = date.toLocaleString('default', { month: 'long' });
-    const year = date.getFullYear();
-    const hours = String(date.getHours()).padStart(2,0);
-    const minutes = String(date.getMinutes()).padStart(2,0);
-    
-    // const time = `${day}/${month}/${year} - ${hours}:${minutes}`; //dit veranderen naar een useState , created_at gebruiken als time
+    const navigate = useNavigate();
+   
 
     const { tableId } = useParams(); //dit is voor id
 
@@ -34,7 +27,8 @@ console.log("logs",logs);
 console.log("tableid",tableId)
 console.log("resultdata",resultData)
 console.log("enabledrows",enabledRows);
-},[logs,tableId,resultData,enabledRows]);
+console.log("tableidprops",tableIdsProp)
+},[logs,tableId,resultData,enabledRows,tableIdsProp]);
 
 useEffect(()=>{
 if(resultsRows && resultsRows.length > 0){
@@ -81,7 +75,7 @@ useEffect(()=>{
     }
 }
     getResults();
-},[])
+},[tableId])
 
      {/* for progress bar */}
 useEffect(() =>{
@@ -113,7 +107,13 @@ return () => clearInterval(timer);
 })
 
 const next = () => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % logs.length);
+    setCurrentIndex((prevIndex) => (prevIndex + 1) % tableIdsProp.length); //tableIds als prop doorgeven
+    if (currentIndex < tableIdsProp.length - 1) {
+        const nextIndex = currentIndex + 1;
+        const nextTableId = tableIdsProp[nextIndex];
+        navigate(`/result/${nextTableId}`);
+        setCurrentIndex(nextIndex); // Update the current index
+    }
 };
 
 async function getLogs(){
@@ -186,8 +186,8 @@ return (
                     <DataGrid 
                     columns={[
                         { field: 'id', headerName: 'ID', flex: 1 },
-                        // { field: 'time', headerName: 'Time', flex: 1 },
-                        { field: 'key', headerName: 'key', flex: 1 },
+                        { field: 'time', headerName: 'Time', flex: 1 },
+                        // { field: 'key', headerName: 'key', flex: 1 },
                         { field: 'value', headerName: 'Value', flex: 1 },
                         { field: 'status', headerName: 'Status', flex: 1 },
                         { field: 'action', headerName: 'Action', flex: 1 },
@@ -199,7 +199,7 @@ return (
                     }))}
                         pageSize={5}
                     />
-                    <button onClick={next} disabled={currentIndex === logs.length -1}>Volgende</button> {/* hierbij moet je naar de volgende result/id gaan */}
+                    <button onClick={next} disabled={currentIndex === tableIdsProp.length -1}>Volgende</button> {/* hierbij moet je naar de volgende result/id gaan */}
                     </>
                      ) : (
                         <p>No logs available</p>
