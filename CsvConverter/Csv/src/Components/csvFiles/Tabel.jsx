@@ -9,10 +9,10 @@ import _, { compact, first, isEmpty } from 'lodash';
 import {toast} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import converter from "../API/CsvConverter";
-import AddIcon from '@mui/icons-material/Add';
+
 import { Link } from 'react-router-dom';
 
-function Tabel({csvData,setResultsRows,downloadfiles,setTableidsProp}) {
+function Tabel({csvData,downloadfiles}) {
   
   const boxClickStyle = {
     position: 'absolute',
@@ -56,12 +56,13 @@ const [tableName,setTableName] = useState([]);
 
 const [batchId,setBatchId] = useState('');
 const [tabelIds,setTabelIds] = useState([]);
+const [latestTableId, setLatestTableId] = useState(null);
 
 const count = mainArray.length;
 const navigate = useNavigate();
 
 
-{/* this is the final data thats getting send to the database.*/}
+{/* this is the final data thats getting send to the database, here you can change data.*/}
 useMemo(() => {
     if (mainArray.length === 0) {
         setProcessedData({})
@@ -75,8 +76,8 @@ useMemo(() => {
             if (!columnName) return; // Skip if columnName is undefined
     
             const columnValue = currentArray[rowIndex][columnIndex];
-            {/* if you want to change whats send to the database, then change below, columnName is the option the user chooses */}
-            if (['* productnaam', 'order1', 'order2'].includes(columnName)) {
+            {/* if you want to change whats send to the database, then change below, columnName is the option the user chooses the rest goes into the table temps */}
+            if (['* productnaam', 'order1', 'order2','barcode'].includes(columnName)) {
                 if (!newRow.products) {
                     newRow.products = {};
                 }
@@ -92,7 +93,6 @@ useMemo(() => {
         return newRow;
     });
     
-    setResultsRows(enabledRows);
     setProcessedData(newData);
 
 },[enabledRows,disabledRows,enabledColumns,currentOptions]);
@@ -106,7 +106,7 @@ console.log("index",index);
 console.log("enabled columns",enabledColumns);
 console.log("selectedrow",selectedRow);
 console.log(["batchId->",batchId],["tabelId->",tabelIds]);
-console.log("downloadedfiles",downloadfiles);
+console.log("downloadedfiles from tabel",downloadfiles);
 },[mainArray,csvData,disabledColumns,enabledColumns,processedData,enabledRows,index,selectedRow,batchId,tabelIds,downloadfiles]);
 
 {/* get the csvData from import */}
@@ -147,15 +147,25 @@ useEffect(() => {
     setBatchId(Date.now().toString(16) + Math.random().toString(16).substring(2, 5));
   },[]);
 
-  {/* this is for navigating the table */} 
+{/* this is for navigation, if there are multiple tables then it will take the first tableId oterwise take the latestTableId */}
+useEffect(() => {
+    if (latestTableId) {
+        if (tabelIds.length > 0) {
+            navigate(`/result/${tabelIds[0]}`);
+        } else {
+            navigate(`/result/${latestTableId}`);
+        }
+    }
+}, [latestTableId, tabelIds, navigate]);
+
+
+  {/* this is for navigating the table and removing all the values for the next table */} 
 const toggleTable =(direction)=>{
     let newIndex = index;
     if(direction === 'next' && index < count -1){
         newIndex = index + 1;
     }
-     else if (direction === 'prev' && index > 0 ){
-        newIndex = index -1;
-    } //dit kan weg
+    
     
     
     setIndex(newIndex);
@@ -169,6 +179,7 @@ const toggleTable =(direction)=>{
     setEnabledColumns([]);
     setDisabledColumns([]);   
     setEnabledSwitch(false);
+    
 };
 
 
@@ -271,7 +282,6 @@ function overslaan () {
     
   };
 
-
 async function toDatabase () {
     const toastStyle = {
         position: "top-right",
@@ -279,7 +289,7 @@ async function toDatabase () {
         closeOnClick:true,
         theme: "light",
     };
-
+    {/* checks */}
     if(!processedData || processedData.length === 0 || Object.keys(processedData[0]).length === 0) {
         toast.error("Select a row and column",toastStyle)
         return false;
@@ -313,10 +323,10 @@ async function toDatabase () {
     try {
         const response = await converter.post('upload', sendData);
         console.log("response data", response);
-
+    
         const successMessage = 'Data succesfully sent to the database!'; 
         toast.success(successMessage,toastStyle);
-
+    
         if (response.data.updatedrows && response.data.updatedrows.length > 0) {
             const updatedRows = response.data.updatedrows;
             const updatedRowNumbers = updatedRows.join(', ');
@@ -326,26 +336,37 @@ async function toDatabase () {
           const responseData = response.data["data processed"];
           
           {/* getting the tableId from the response, if its not in products then look in temps, return the tableId */}
-          if (responseData && Array.isArray(responseData.products) && responseData.products.length > 0) {
-              tableId = responseData.products[0].table_id;
-              console.log('table_id from products:', tableId);
-          } else {
-              if (responseData && Array.isArray(responseData.temps) && responseData.temps.length > 0) {
-                  tableId = responseData.temps[0].table_id;
-                  console.log('table_id from temps:', tableId);
-              }
-          }
-  
+          if (response.data.tableId) {
+            tableId = response.data.tableId;
+            console.log('tableId directly from response:', tableId);
+        } else if (responseData && Array.isArray(responseData.products) && responseData.products.length > 0) {
+            tableId = responseData.products[0].tableId;
+            console.log('tableId from products:', tableId);
+        } else if (responseData && Array.isArray(responseData.temps) && responseData.temps.length > 0) {
+            tableId = responseData.temps[0].tableId;
+            console.log('tableId from temps:', tableId);
+        }
+
+         await postFiles(tableId, downloadfiles);
+       
           if (tableId) {
-            setTabelIds([...tabelIds,tableId]);
-            setTableidsProp([...tabelIds,tableId])
-              return tableId; //put the tableId in an useState array then do tableId[0] to get the first tableId
+    if (Array.isArray(tableId)) {
+        // If tableId is already an array, spread it and update tabelIds
+        setTabelIds([...tabelIds, ...tableId]);
+        //nog een else if maken om de tableId op te vragen als je update
+    } else {
+        // If tableId is a single value, directly set it as the value of tabelIds
+        setTabelIds((prevTabelIds) => [...prevTabelIds, tableId]);
+        return tableId;
+    }
+    
+        // return tableId; 
+        
           } else {
               throw new Error("Invalid response structure: tableId not found");
           }
-  
-        
-           
+        //   await postFiles(tabelIds, downloadfiles); 
+
 } catch (error) {
     console.log(error);
     if ( error.response.data && error.response.data.error === "Productnummer doesnt exist.") {
@@ -358,6 +379,19 @@ async function toDatabase () {
         }
     }
 };
+
+{/* the data send to files */}
+async function postFiles(tableIds, downloadfiles) {
+    try {
+        const formData = new FormData();
+        formData.append('tableId', tableIds);
+        formData.append('downloadedfiles', downloadfiles[index]);
+        const responseFiles = await converter.post('/files', formData);
+        console.log("Response from postfiles:", responseFiles);
+    } catch (error) {
+        console.error("Error posting logs:", error);
+    }
+}
 
 {/* cellstyle for the table*/}
 const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnIndex) => {
@@ -461,13 +495,7 @@ const cellStyle = (disabledRows,rowIndex,currentOptions,processedData,columnInde
                             } else{
                                 const tableId = await toDatabase();
                                 if(tableId){
-                                    // navigate(`/result/${tableId}`); //misschien hier tableId getten?
-                                    try{
-                                        navigate(`/result/${tabelIds[0]}`);
-                                    } catch (error) {
-
-                                    }
-                                    // navigate("/result");
+                                    setLatestTableId(tableId);
                                 }   
                                
                             }
